@@ -1,0 +1,52 @@
+{
+  "source_blend": "C:\\Users\\azoo\\git\\kami4-hair-solver\\outputs\\root2_200F_20260917_131237\\kami4_root2_200F.blend",
+  "frame": 164,
+  "root_points": 2,
+  "cache": "C:\\Users\\azoo\\git\\kami4-hair-solver\\outputs\\root2_200F_20260917_131237\\cache",
+  "source": "カーブ",
+  "collider": "CC_Base_Body",
+  "libraries": [
+    {
+      "name": "geometry_nodes_dynamics_assets.blend",
+      "packed": false,
+      "exists": false
+    },
+    {
+      "name": "geometry_nodes_dynamics_assets.blend.001",
+      "packed": false,
+      "exists": false
+    },
+    {
+      "name": "geometry_nodes_essentials.blend",
+      "packed": false,
+      "exists": false
+    },
+    {
+      "name": "geometry_nodes_essentials.blend.001",
+      "packed": false,
+      "exists": false
+    },
+    {
+      "name": "geometry_nodes_essentials.blend.002",
+      "packed": false,
+      "exists": false
+    },
+    {
+      "name": "geometry_nodes_essentials.blend.003",
+      "packed": false,
+      "exists": false
+    },
+    {
+      "name": "procedural_hair_node_assets.blend",
+      "packed": false,
+      "exists": false
+    },
+    {
+      "name": "procedural_hair_node_assets.blend.001",
+      "packed": false,
+      "exists": false
+    }
+  ],
+  "images": 129,
+  "unpacked_images": []
+}

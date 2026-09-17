@@ -1,0 +1,42 @@
+{
+  "root_points": 2,
+  "cache_crc_frames": 200,
+  "checks": [
+    {
+      "frame": 1,
+      "replay_equal": true,
+      "hair_input_max_difference": 0.0,
+      "collider_input_max_difference": 0.0
+    },
+    {
+      "frame": 22,
+      "replay_equal": true,
+      "hair_input_max_difference": 0.0,
+      "collider_input_max_difference": 0.0
+    },
+    {
+      "frame": 23,
+      "replay_equal": true,
+      "hair_input_max_difference": 0.0,
+      "collider_input_max_difference": 0.0
+    },
+    {
+      "frame": 200,
+      "replay_equal": true,
+      "hair_input_max_difference": 0.0,
+      "collider_input_max_difference": 0.0
+    },
+    {
+      "frame": 164,
+      "replay_equal": true,
+      "hair_input_max_difference": 0.0,
+      "collider_input_max_difference": 0.0
+    }
+  ],
+  "frame": 164,
+  "relative_cache": "//cache",
+  "relative_parameters": "//parameters.json",
+  "blender": "5.2.2 LTS",
+  "source": "カーブ",
+  "collider": "CC_Base_Body"
+}

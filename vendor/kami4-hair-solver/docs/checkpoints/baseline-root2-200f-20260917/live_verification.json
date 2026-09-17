@@ -1,0 +1,9 @@
+{
+  "frame": 200,
+  "root_points": 2,
+  "frames": 200,
+  "live_replay_matches_cache": true,
+  "source": "カーブ",
+  "collider": "CC_Base_Body",
+  "blend": "C:\\Users\\azoo\\git\\kami4-hair-solver\\outputs\\root2_200F_20260917_131237\\kami4_root2_200F.blend"
+}

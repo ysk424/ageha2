@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "checkpoint_tag": "baseline-root2-200f-20260917",
+  "source_commit": "24867c9439bdededd036622737748527536799de",
+  "root_points": 2,
+  "frame_start": 1,
+  "frame_end": 200,
+  "fps": 24,
+  "fps_base": 1.0,
+  "source": "カーブ",
+  "collider": "CC_Base_Body",
+  "collider_collection": null,
+  "parameters": {
+    "schema": 1,
+    "bending_rigidity": 1e-06,
+    "linear_density": 0.0001,
+    "guide_radius": 4e-05,
+    "damping": 8.0,
+    "friction": 0.35,
+    "gravity": 9.80665,
+    "substeps": 4,
+    "length_passes": 3,
+    "impulse_sweeps": 3,
+    "length_regularization_relative": 1e-07,
+    "contact_tolerance": 0.00015
+  },
+  "status": "accepted_baseline_with_known_contact_failures",
+  "reference_total_seconds": 80.79588039999362,
+  "reference_average_seconds_per_frame": 0.4039794019999681
+}

@@ -1,0 +1,136 @@
+{
+  "status": "FAIL",
+  "checks": {
+    "T1": true,
+    "T2": true,
+    "T3": true,
+    "protocol_motion_bound": true,
+    "common_parameters": true,
+    "real_200_complete": true,
+    "real_length": true,
+    "real_contact": false,
+    "real_motion": false,
+    "synthetic_100k": true,
+    "real_full_frame_realtime": false,
+    "cache_restart": true,
+    "strict_T1_residual_relative_2pct": false
+  },
+  "binary_hash": "ea2d71f02a40ee0db6820c097784c8795132edea0dee097b70dbdd445650f0c2",
+  "package_hash": "e969b9d267a6cd13362a721a79a00353f3cb70be42d6d85068515b94bb69bb0f",
+  "parameter_hash": "1a3e001805bf7fcf2b7e95eb7f1141c14d9226c4b2bd6b40984e51a754ac92a5",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti, 616.92",
+  "blender": "5.2.2 LTS",
+  "material": {
+    "schema": 1,
+    "bending_rigidity": 1e-06,
+    "linear_density": 0.0001,
+    "guide_radius": 4e-05,
+    "damping": 8.0,
+    "friction": 0.35,
+    "gravity": 9.80665,
+    "substeps": 4,
+    "length_passes": 3,
+    "impulse_sweeps": 3,
+    "length_regularization_relative": 1e-07,
+    "contact_tolerance": 0.00015
+  },
+  "real": {
+    "frames": 200,
+    "requested_frames": 200,
+    "seconds": 1.2797028000059072,
+    "parameter_hash": "1a3e001805bf7fcf2b7e95eb7f1141c14d9226c4b2bd6b40984e51a754ac92a5",
+    "failure": null,
+    "max_length_error": 0.008083224296569824,
+    "p99_length_error": 3.886222839355469e-05,
+    "max_displacement": 0.028568394482135773,
+    "friction_cone_violation": 1.1368683772161603e-13,
+    "min_gap": -3.160898995702155e-05,
+    "motion_violations": 58011884,
+    "native_ms_median": 2.4926400184631348,
+    "total_ms_median": 4.8867000004975125,
+    "checks": {
+      "completed": true,
+      "length": true,
+      "p99": true,
+      "penetration": false,
+      "motion": false,
+      "finite": true
+    },
+    "pass": false
+  },
+  "synthetic": {
+    "points": 100000,
+    "strands": 9091,
+    "warmup": 120,
+    "frames": 600,
+    "scenario": "all free points contacting plane",
+    "contact_count_range": [
+      90909,
+      90909
+    ],
+    "blender": "5.2.2 LTS",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti, 616.92",
+    "binary_hash": "ea2d71f02a40ee0db6820c097784c8795132edea0dee097b70dbdd445650f0c2",
+    "parameter_hash": "1a3e001805bf7fcf2b7e95eb7f1141c14d9226c4b2bd6b40984e51a754ac92a5",
+    "parameters": {
+      "schema": 1,
+      "bending_rigidity": 1e-06,
+      "linear_density": 0.0001,
+      "guide_radius": 4e-05,
+      "damping": 8.0,
+      "friction": 0.35,
+      "gravity": 9.80665,
+      "substeps": 4,
+      "length_passes": 3,
+      "impulse_sweeps": 3,
+      "length_regularization_relative": 1e-07,
+      "contact_tolerance": 0.00015
+    },
+    "native_median": 1.2401599884033203,
+    "blender_total_median": 3.14510000316659,
+    "fixed_launch_counts": [
+      53
+    ],
+    "frame_allocations": 0,
+    "nonfinite": 0,
+    "pass": true
+  },
+  "blender_full": {
+    "frames": 200,
+    "seconds": 85.38382519999868,
+    "source_unchanged": true,
+    "source": "カーブ",
+    "collider": "CC_Base_Body",
+    "points": 74327,
+    "strands": 6757,
+    "max_difference_from_exported_run": 0.0,
+    "native_ms_median": 26.894415855407715,
+    "full_blender_frame_ms_median": 422.276849996706,
+    "parameter_hash": "1a3e001805bf7fcf2b7e95eb7f1141c14d9226c4b2bd6b40984e51a754ac92a5",
+    "binary_hash": "ea2d71f02a40ee0db6820c097784c8795132edea0dee097b70dbdd445650f0c2",
+    "contact_slots": 1,
+    "native_graph_prepared": true
+  },
+  "motion_bound": {
+    "min_edge": 0.0002730422420427203,
+    "allowed_substep_displacement": 6.826056051068008e-05,
+    "maximum_root_frame_displacement": 0.012527951039373875,
+    "frame": 102,
+    "strand": 5971,
+    "root_point": 65681,
+    "minimum_root_substep_displacement_at_8": 0.0015659938799217343,
+    "ratio_at_8": 22.941415786743164,
+    "unavoidable_violations_at_8": 1135902,
+    "interpretation": "Even straight substep interpolation of prescribed roots exceeds the motion bound at the maximum allowed fixed budget. The original animation is unchanged.",
+    "per_strand_bound_worst": {
+      "frame": 102,
+      "strand": 1794,
+      "minimum_edge": 0.0002730422420427203,
+      "root_frame_displacement": 0.011364011093974113,
+      "ratio_at_8": 20.809988021850586
+    }
+  },
+  "fixed_launch_counts": [
+    129
+  ]
+}

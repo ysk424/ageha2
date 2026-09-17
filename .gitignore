@@ -1,0 +1,9 @@
+/dist/
+/build/
+/ageha_cache/
+/kami4_cache/
+/test_runs/
+*.pyc
+__pycache__/
+/.pytest_cache/
+*.blend*

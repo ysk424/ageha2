@@ -1,0 +1,9 @@
+build/
+outputs/
+dist/
+__pycache__/
+extension/bin/*.dll
+*.blend*
+
+.venv/
+initial_scene.json
