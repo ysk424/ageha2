@@ -61,6 +61,8 @@ while ageha2.kami4_addon.simulate_frame(scene):
     frames += 1
 simulation_seconds = time.perf_counter() - simulation_started
 total_seconds = time.perf_counter() - total_started
+settings.replay = True
+ageha2.kami4_addon.replay_handler(scene)
 
 manifest = runtime["manifest"]
 parameter_hash = manifest["parameter_hash"]

@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 from pathlib import Path
+import time
 
 import bpy
 from bpy.props import FloatProperty, IntProperty, PointerProperty, StringProperty
@@ -13,10 +16,24 @@ from .kami4_solver import addon as kami4_addon
 from .kami4_solver import native as kami4_native
 
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 MASK_OBJECT_NAME = "Ageha_HairMask"
 BANGS_CUTTER_NAME = "Ageha_BangsAutoCutter"
+
+KAMI4_PARAMETER_DEFAULTS = {
+    "bending_rigidity": 1.0e-6,
+    "linear_density": 1.0e-4,
+    "guide_radius": 4.0e-5,
+    "damping": 8.0,
+    "friction": 0.35,
+    "gravity": 9.80665,
+    "substeps": 4,
+    "length_passes": 3,
+    "impulse_sweeps": 3,
+    "length_regularization_relative": 1.0e-7,
+    "contact_tolerance": 1.5e-4,
+}
 
 
 def _poll_curves(_self, obj) -> bool:
@@ -29,6 +46,59 @@ def _poll_mesh(_self, obj) -> bool:
 
 def _simulation(context):
     return context.scene.kami4
+
+
+def _parameter_dict(ageha) -> dict:
+    values = {}
+    for name, default in KAMI4_PARAMETER_DEFAULTS.items():
+        raw = getattr(ageha, name)
+        values[name] = int(raw) if isinstance(default, int) else float(raw)
+    return {
+        "schema": 1,
+        **values,
+    }
+
+
+def _new_cache_directory(scene) -> Path:
+    parent = Path(bpy.path.abspath("//")) if bpy.data.filepath else Path(bpy.app.tempdir)
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    return parent / "ageha2_cache" / f"{stamp}_{time.time_ns() % 1_000_000_000:09d}"
+
+
+def _prepare_kami4_parameters(context) -> Path:
+    """Materialize UI values beside a new cache without touching Kami4 defaults."""
+    scene = context.scene
+    sim = _simulation(context)
+    ageha = scene.ageha_settings
+    if not sim.cache_directory:
+        sim.cache_directory = str(_new_cache_directory(scene))
+    directory = Path(bpy.path.abspath(sim.cache_directory))
+    values = _parameter_dict(ageha)
+    wanted_hash = kami4_native.parameter_hash(values)
+    manifest_path = directory / "manifest.json"
+    if manifest_path.exists():
+        existing = kami4_addon.cache.load(directory)
+        if existing.get("parameter_hash") != wanted_hash:
+            raise RuntimeError(
+                "このキャッシュは別のパラメータです。「新しいキャッシュに切替」を押してください"
+            )
+    directory.mkdir(parents=True, exist_ok=True)
+    parameter_path = directory / "parameters.json"
+    if parameter_path.exists():
+        current = json.loads(parameter_path.read_text(encoding="utf8"))
+        if kami4_native.parameter_hash(current) != wanted_hash:
+            raise RuntimeError(
+                "既存 parameters.json は上書きしません。新しいキャッシュへ切り替えてください"
+            )
+    else:
+        temporary = parameter_path.with_suffix(".json.tmp")
+        temporary.write_text(
+            json.dumps(values, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf8",
+        )
+        os.replace(temporary, parameter_path)
+    sim.parameter_file = str(parameter_path)
+    return parameter_path
 
 
 def _set_curves_surface(curves_obj, surface_obj) -> None:
@@ -236,6 +306,39 @@ class AgehaSettings(PropertyGroup):
         step=10,
         precision=2,
     )
+    bending_rigidity: StringProperty(
+        name="曲げ剛性 (N·m²)", default="1e-06",
+    )
+    linear_density: StringProperty(
+        name="線密度 (kg/m)", default="0.0001",
+    )
+    guide_radius: StringProperty(
+        name="ガイド半径 (m)", default="4e-05",
+    )
+    damping: StringProperty(
+        name="減衰", default="8.0",
+    )
+    friction: StringProperty(
+        name="摩擦", default="0.35",
+    )
+    gravity: StringProperty(
+        name="重力 (m/s²)", default="9.80665",
+    )
+    substeps: IntProperty(
+        name="サブステップ", default=4, min=1,
+    )
+    length_passes: IntProperty(
+        name="長さ拘束パス", default=3, min=1,
+    )
+    impulse_sweeps: IntProperty(
+        name="接触インパルス反復", default=3, min=1,
+    )
+    length_regularization_relative: StringProperty(
+        name="長さ正則化（相対）", default="1e-07",
+    )
+    contact_tolerance: StringProperty(
+        name="接触許容差 (m)", default="0.00015",
+    )
     runtime_status: StringProperty(name="状態", default="準備完了", options={"SKIP_SAVE"})
 
 
@@ -305,11 +408,145 @@ class AGEHA_OT_new_cache(Operator):
     def execute(self, context):
         try:
             _detach_simulation(context)
+            _simulation(context).parameter_file = ""
             context.scene.ageha_settings.runtime_status = "既存キャッシュを保持して切り離しました"
             return {"FINISHED"}
         except Exception as exc:
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
+
+
+class AGEHA_OT_load_kami4_parameters(Operator):
+    bl_idname = "ageha.load_kami4_parameters"
+    bl_label = "JSONから読込"
+    bl_description = "指定JSON、未指定なら内包したKami4標準値をパネルへ読み込む"
+
+    def execute(self, context):
+        ageha = context.scene.ageha_settings
+        sim = _simulation(context)
+        path = (
+            Path(bpy.path.abspath(sim.parameter_file))
+            if sim.parameter_file
+            else Path(kami4_native.ROOT) / "parameters.json"
+        )
+        try:
+            values = json.loads(path.read_text(encoding="utf8"))
+            missing = [name for name in KAMI4_PARAMETER_DEFAULTS if name not in values]
+            if missing:
+                raise ValueError(f"不足パラメータ: {', '.join(missing)}")
+            for name, default in KAMI4_PARAMETER_DEFAULTS.items():
+                value = values[name]
+                setattr(ageha, name, int(value) if isinstance(default, int) else repr(float(value)))
+            ageha.runtime_status = f"Kami4 パラメータ読込: {path}"
+            self.report({"INFO"}, ageha.runtime_status)
+            return {"FINISHED"}
+        except Exception as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+
+
+class AGEHA_OT_restore_kami4_parameters(Operator):
+    bl_idname = "ageha.restore_kami4_parameters"
+    bl_label = "Kami4標準値"
+    bl_description = "完成版Kami4のparameters.jsonと同じ値へ戻す"
+
+    def execute(self, context):
+        ageha = context.scene.ageha_settings
+        for name, value in KAMI4_PARAMETER_DEFAULTS.items():
+            setattr(ageha, name, value if isinstance(value, int) else repr(value))
+        ageha.runtime_status = "完成版 Kami4 の標準パラメータへ戻しました"
+        return {"FINISHED"}
+
+
+class AGEHA_OT_kami4_initialize(Operator):
+    bl_idname = "ageha.kami4_initialize"
+    bl_label = "初期化"
+
+    def execute(self, context):
+        try:
+            _prepare_kami4_parameters(context)
+            kami4_addon.initialize(context.scene)
+            return {"FINISHED"}
+        except Exception as exc:
+            _simulation(context).last_error = str(exc)
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+
+
+class AGEHA_OT_kami4_simulate(Operator):
+    bl_idname = "ageha.kami4_simulate"
+    bl_label = "1フレーム計算"
+
+    def execute(self, context):
+        try:
+            _prepare_kami4_parameters(context)
+            kami4_addon.simulate_frame(context.scene)
+            return {"FINISHED"}
+        except Exception as exc:
+            _simulation(context).last_error = str(exc)
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+
+
+class AGEHA_OT_kami4_reset(Operator):
+    bl_idname = "ageha.kami4_reset"
+    bl_label = "開始形状へ"
+
+    def execute(self, context):
+        try:
+            _prepare_kami4_parameters(context)
+            kami4_addon.initialize(context.scene, clear_cache=False)
+            return {"FINISHED"}
+        except Exception as exc:
+            _simulation(context).last_error = str(exc)
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+
+
+class AGEHA_OT_kami4_bake(Operator):
+    bl_idname = "ageha.kami4_bake"
+    bl_label = "全フレーム計算"
+    _timer = None
+
+    def _finish(self, context, cancel=False):
+        if self._timer:
+            context.window_manager.event_timer_remove(self._timer)
+            self._timer = None
+        sim = _simulation(context)
+        sim.replay = True
+        kami4_addon.replay_handler(context.scene)
+        return {"CANCELLED"} if cancel else {"FINISHED"}
+
+    def execute(self, context):
+        try:
+            _prepare_kami4_parameters(context)
+            kami4_addon.initialize(context.scene)
+            if bpy.app.background:
+                while kami4_addon.simulate_frame(context.scene):
+                    pass
+                return self._finish(context)
+            self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
+            context.window_manager.modal_handler_add(self)
+            return {"RUNNING_MODAL"}
+        except Exception as exc:
+            _simulation(context).last_error = str(exc)
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+
+    def modal(self, context, event):
+        if event.type == "ESC":
+            return self._finish(context, True)
+        if event.type == "TIMER":
+            try:
+                if not kami4_addon.simulate_frame(context.scene):
+                    return self._finish(context)
+                for area in context.screen.areas:
+                    area.tag_redraw()
+            except Exception as exc:
+                _simulation(context).last_error = str(exc)
+                self.report({"ERROR"}, str(exc))
+                return self._finish(context, True)
+        return {"PASS_THROUGH"}
 
 
 class AGEHA_OT_create_head_mask(Operator):
@@ -480,6 +717,12 @@ _CLASSES = (
     AGEHA_OT_pick_body,
     AGEHA_OT_preflight,
     AGEHA_OT_new_cache,
+    AGEHA_OT_load_kami4_parameters,
+    AGEHA_OT_restore_kami4_parameters,
+    AGEHA_OT_kami4_initialize,
+    AGEHA_OT_kami4_simulate,
+    AGEHA_OT_kami4_reset,
+    AGEHA_OT_kami4_bake,
     AGEHA_OT_create_head_mask,
     AGEHA_OT_plant_hair,
     AGEHA_OT_plant_z_axis,

@@ -64,15 +64,39 @@ class AGEHA_PT_main(Panel):
         _prop(row, sim, "frame_start")
         _prop(row, sim, "frame_end")
         _prop(box, sim, "root_points")
-        _prop(box, sim, "parameter_file", text="共通パラメータ JSON")
         _prop(box, sim, "cache_directory", text="キャッシュ")
         box.operator("ageha.new_cache", icon="FILE_REFRESH", translate=False)
+
+        box = layout.box()
+        _label(box, "Kami4 計算パラメータ")
+        _prop(box, sim, "parameter_file", text="読込元 JSON")
         row = box.row(align=True)
-        row.operator("kami4.initialize", text="初期化", translate=False)
-        row.operator("kami4.reset", text="開始形状へ", translate=False)
+        row.operator("ageha.load_kami4_parameters", translate=False)
+        row.operator("ageha.restore_kami4_parameters", translate=False)
+        for name in (
+            "bending_rigidity",
+            "linear_density",
+            "guide_radius",
+            "damping",
+            "friction",
+            "gravity",
+            "substeps",
+            "length_passes",
+            "impulse_sweeps",
+            "length_regularization_relative",
+            "contact_tolerance",
+        ):
+            _prop(box, ageha, name)
+        _label(box, "変更時は新しいキャッシュを使用")
+
+        box = layout.box()
+        _label(box, "Kami4 実行・再生")
         row = box.row(align=True)
-        row.operator("kami4.simulate", text="1フレーム計算", translate=False)
-        row.operator("kami4.bake", text="全フレーム計算", icon="RENDER_ANIMATION", translate=False)
+        row.operator("ageha.kami4_initialize", text="初期化", translate=False)
+        row.operator("ageha.kami4_reset", text="開始形状へ", translate=False)
+        row = box.row(align=True)
+        row.operator("ageha.kami4_simulate", text="1フレーム計算", translate=False)
+        row.operator("ageha.kami4_bake", text="全フレーム計算", icon="RENDER_ANIMATION", translate=False)
         box.operator("kami4.replay", text="キャッシュ再生", translate=False)
         _prop(box, sim, "replay")
 

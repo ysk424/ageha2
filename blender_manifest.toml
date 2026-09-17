@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "ageha2"
-version = "0.3.0"
+version = "0.3.1"
 name = "揚羽"
 tagline = "All-in-one hair grooming and Kami4 CUDA simulation"
 maintainer = "Y Tsukamoto"
