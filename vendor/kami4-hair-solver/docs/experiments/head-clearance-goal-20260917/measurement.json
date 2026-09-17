@@ -1,0 +1,324 @@
+{
+  "frame": 71,
+  "cache": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\review_bvh_extension_30cm_200",
+  "body_vertices_match_cached": true,
+  "body_triangle_difference_rows": 28,
+  "uses_live_body_triangles": true,
+  "output_matches_cache": true,
+  "parameters": {
+    "schema": 1,
+    "bending_rigidity": 1e-06,
+    "linear_density": 0.0001,
+    "guide_radius": 4e-05,
+    "damping": 8.0,
+    "friction": 0.35,
+    "gravity": 9.80665,
+    "substeps": 4,
+    "length_passes": 8,
+    "impulse_sweeps": 3,
+    "length_regularization_relative": 1e-07,
+    "contact_tolerance": 0.00015,
+    "mesh_contact_mode": 1,
+    "minimum_dynamic_length": 0.3,
+    "maximum_extension_element_length": 0.01,
+    "extension_length_iterations": 16,
+    "maximum_visible_element_length": 0.0,
+    "root_points": 2
+  },
+  "definition": "Shortest point-to-body distance for hair whose nearest body point lies in top 3cm of body in world Z; this is a crown-region sample, not exact image silhouette width.",
+  "body_highest_z_m": 1.7444924116134644,
+  "hair_highest_z_m": 1.7834854125976562,
+  "world_vertical_top_gap_cm": 3.8993000984191895,
+  "highest_hair_point": {
+    "strand": 6703,
+    "local_point_zero_based": 3,
+    "fixed": false,
+    "distance_cm": 4.061947390437126
+  },
+  "crown_all": {
+    "points": 7414,
+    "strands": 1853,
+    "distance_cm_percentiles": {
+      "0": 0.09989435784518719,
+      "50": 1.734931766986847,
+      "90": 3.8043635338544846,
+      "95": 4.091402925550938,
+      "99": 4.193410784006119,
+      "100": 4.328347370028496
+    },
+    "points_above_2cm": 3144,
+    "fixed_points_above_2cm": 0
+  },
+  "crown_fixed_second": {
+    "points": 1850,
+    "strands": 1850,
+    "distance_cm_percentiles": {
+      "0": 1.6603589057922363,
+      "50": 1.7346164211630821,
+      "90": 1.7350383661687376,
+      "95": 1.735075851902366,
+      "99": 1.7351089995354414,
+      "100": 1.7351467162370682
+    },
+    "points_above_2cm": 0,
+    "fixed_points_above_2cm": 0
+  },
+  "crown_free": {
+    "points": 3714,
+    "strands": 1619,
+    "distance_cm_percentiles": {
+      "0": 0.2374055329710245,
+      "50": 3.6063071340322495,
+      "90": 4.0912701189517975,
+      "95": 4.159039128571749,
+      "99": 4.226080182939768,
+      "100": 4.328347370028496
+    },
+    "points_above_2cm": 3144,
+    "fixed_points_above_2cm": 0
+  },
+  "extremes": [
+    {
+      "strand": 5501,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.328347370028496,
+      "hair": [
+        -0.10172445327043533,
+        0.0017528842436149716,
+        1.7468132972717285
+      ],
+      "scalp": [
+        -0.07293924689292908,
+        -0.004604082554578781,
+        1.7151200771331787
+      ]
+    },
+    {
+      "strand": 5171,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.3239399790763855,
+      "hair": [
+        0.015852171927690506,
+        -0.11303891241550446,
+        1.7465448379516602
+      ],
+      "scalp": [
+        0.008995666168630123,
+        -0.084671251475811,
+        1.7146401405334473
+      ]
+    },
+    {
+      "strand": 5500,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.299626871943474,
+      "hair": [
+        -0.10260820388793945,
+        -0.0038632932119071484,
+        1.7464648485183716
+      ],
+      "scalp": [
+        -0.07410278916358948,
+        -0.008117320016026497,
+        1.7145583629608154
+      ]
+    },
+    {
+      "strand": 5382,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.291857406497002,
+      "hair": [
+        0.021164722740650177,
+        -0.10831420123577118,
+        1.7489023208618164
+      ],
+      "scalp": [
+        0.012943501584231853,
+        -0.08165137469768524,
+        1.716290831565857
+      ]
+    },
+    {
+      "strand": 5499,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.28849458694458,
+      "hair": [
+        -0.1019192487001419,
+        -0.009926729835569859,
+        1.7475786209106445
+      ],
+      "scalp": [
+        -0.07395442575216293,
+        -0.011915653944015503,
+        1.715126633644104
+      ]
+    },
+    {
+      "strand": 5169,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.285679757595062,
+      "hair": [
+        0.003864406840875745,
+        -0.11431507766246796,
+        1.7468092441558838
+      ],
+      "scalp": [
+        0.0006986930966377258,
+        -0.08610498905181885,
+        1.7147020101547241
+      ]
+    },
+    {
+      "strand": 5498,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.279371351003647,
+      "hair": [
+        -0.10052713751792908,
+        -0.016074569895863533,
+        1.7489185333251953
+      ],
+      "scalp": [
+        -0.07281764596700668,
+        -0.016089461743831635,
+        1.7163074016571045
+      ]
+    },
+    {
+      "strand": 5168,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.279176518321037,
+      "hair": [
+        -0.0006914403638802469,
+        -0.11460893601179123,
+        1.7467681169509888
+      ],
+      "scalp": [
+        -0.002685405081138015,
+        -0.08634139597415924,
+        1.7147040367126465
+      ]
+    },
+    {
+      "strand": 5163,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.277023300528526,
+      "hair": [
+        -0.033323273062705994,
+        -0.1088273897767067,
+        1.7480827569961548
+      ],
+      "scalp": [
+        -0.024905724450945854,
+        -0.0824461430311203,
+        1.7154872417449951
+      ]
+    },
+    {
+      "strand": 5164,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.271198064088821,
+      "hair": [
+        -0.02719513699412346,
+        -0.1105203926563263,
+        1.748060703277588
+      ],
+      "scalp": [
+        -0.02051617205142975,
+        -0.08334147930145264,
+        1.7157959938049316
+      ]
+    },
+    {
+      "strand": 5621,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.270827025175095,
+      "hair": [
+        -0.09855647385120392,
+        -0.0003441070730332285,
+        1.749139428138733
+      ],
+      "scalp": [
+        -0.07094106078147888,
+        -0.005152236670255661,
+        1.7169172763824463
+      ]
+    },
+    {
+      "strand": 5165,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.268902912735939,
+      "hair": [
+        -0.02100573107600212,
+        -0.11242926865816116,
+        1.747536063194275
+      ],
+      "scalp": [
+        -0.01645253412425518,
+        -0.08469825983047485,
+        1.7154017686843872
+      ]
+    },
+    {
+      "strand": 5159,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.268031194806099,
+      "hair": [
+        -0.0550459586083889,
+        -0.10059060156345367,
+        1.7464770078659058
+      ],
+      "scalp": [
+        -0.040236178785562515,
+        -0.07627622038125992,
+        1.7146793603897095
+      ]
+    },
+    {
+      "strand": 5160,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.266855493187904,
+      "hair": [
+        -0.05008109658956528,
+        -0.10345352441072464,
+        1.7464685440063477
+      ],
+      "scalp": [
+        -0.036315321922302246,
+        -0.07847439497709274,
+        1.7147328853607178
+      ]
+    },
+    {
+      "strand": 5166,
+      "local_point_zero_based": 4,
+      "fixed": false,
+      "distance_cm": 4.264547303318977,
+      "hair": [
+        -0.014691113494336605,
+        -0.11382682621479034,
+        1.747025489807129
+      ],
+      "scalp": [
+        -0.011943720281124115,
+        -0.08563816547393799,
+        1.715143084526062
+      ]
+    }
+  ],
+  "scene_changed": false,
+  "simulation_executed": false
+}

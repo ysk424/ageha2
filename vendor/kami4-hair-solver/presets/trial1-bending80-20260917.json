@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "bending_rigidity": 8e-07,
+  "linear_density": 0.0001,
+  "guide_radius": 4e-05,
+  "damping": 8.0,
+  "friction": 0.35,
+  "gravity": 9.80665,
+  "substeps": 4,
+  "length_passes": 8,
+  "impulse_sweeps": 3,
+  "length_regularization_relative": 1e-07,
+  "contact_tolerance": 0.00015,
+  "mesh_contact_mode": 1,
+  "minimum_dynamic_length": 0.3,
+  "maximum_extension_element_length": 0.01,
+  "extension_length_iterations": 16,
+  "maximum_visible_element_length": 0.0,
+  "root_points": 2
+}

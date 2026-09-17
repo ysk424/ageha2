@@ -40,7 +40,7 @@ report = dict(
     parameters=p,
     parameter_hash=parameter_hash(p),
     binary_hash=hashlib.sha256(
-        (ROOT / "extension/bin/kami4_hair_core.dll").read_bytes()
+        (ROOT / "extension/bin/kami4_hair_core_bvh1.dll").read_bytes()
     ).hexdigest(),
     gpu=subprocess.check_output(
         ["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"], text=True

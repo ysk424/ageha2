@@ -32,7 +32,7 @@ def run(name="real_mesh", frames=200, mesh=True):
         parameter_hash(p),
         input=meta,
         binary_hash=hashlib.sha256(
-            (ROOT / "extension/bin/kami4_hair_core.dll").read_bytes()
+            (ROOT / "extension/bin/kami4_hair_core_bvh1.dll").read_bytes()
         ).hexdigest(),
         backend="CUDA",
         mesh=mesh,

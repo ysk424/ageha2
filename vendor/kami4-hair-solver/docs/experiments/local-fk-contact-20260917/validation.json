@@ -1,0 +1,39 @@
+{
+  "frames_checked": 200,
+  "zero_crossing_frames": 71,
+  "max_crossing_segments": 6,
+  "max_crossing_strands": 3,
+  "worst_frames": [
+    76
+  ],
+  "parameters_changed": {
+    "mesh_contact_mode": [
+      1,
+      2
+    ]
+  },
+  "binary_sha256": "0c5db7c3cc80ca80b86394d25e4ff5541bb7e1af5362efd9c2245a86962a221e",
+  "addon_sha256": "59b1d1708d94f6c5f5f0a3fae8d9cf468578a0272b6009e3aad8e93c592f6400",
+  "fk_summary": {
+    "fk_strands": {
+      "mean": 448.455,
+      "max": 656
+    },
+    "fk_repairs": {
+      "mean": 690.79,
+      "max": 1137
+    },
+    "fk_repairs_max": {
+      "mean": 25.885,
+      "max": 36
+    },
+    "fk_max_rewind": {
+      "mean": 3.35,
+      "max": 8
+    },
+    "fk_unresolved": {
+      "mean": 33.56,
+      "max": 57
+    }
+  }
+}

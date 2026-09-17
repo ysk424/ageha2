@@ -1,0 +1,21 @@
+{
+  "date": "2026-09-17",
+  "status": "user_adopted",
+  "user_statement": "PUSHですね。現時点で満足できる性能です。",
+  "baseline_tag": "baseline-local-fk-adopted-20260917",
+  "review_tag": "review-local-fk-200f-20260917",
+  "implementation_commit": "eab0400d5615f3c1abe833398ab05d9f15dbf21f",
+  "archive": "review-local-fk-200f-20260917.zip",
+  "archive_sha256": "3f091e08eca2227f7b6991d7680a404612dab0c93c86a54409321ddedae418f6",
+  "addon_version": "0.3.0",
+  "addon_sha256": "59b1d1708d94f6c5f5f0a3fae8d9cf468578a0272b6009e3aad8e93c592f6400",
+  "binary_sha256": "0c5db7c3cc80ca80b86394d25e4ff5541bb7e1af5362efd9c2245a86962a221e",
+  "parameter_hash": "f9473015f35d7d081ab5be07e23fe2b100288552af3a35456e039f6888fcd29b",
+  "parameter_preset": "presets/local-fk-contact-20260917.json",
+  "frames": 200,
+  "simulation_rerun": false,
+  "numerical_changes": false,
+  "parameter_changes": false,
+  "scene_changes": false,
+  "previous_adopted_tag": "baseline-bending50-adopted-20260917"
+}

@@ -1,0 +1,56 @@
+{
+  "saved": true,
+  "current_file": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\checkpoints\\session-end-20260917\\scene.blend",
+  "previous_file": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\local_fk_v2_200\\kami4_aces_local_fk_v2.blend",
+  "frame": 87,
+  "views": [
+    {
+      "perspective": "PERSP",
+      "distance": 7.707729339599609,
+      "location": [
+        5.044869899749756,
+        2.911458730697632,
+        0.4546263515949249
+      ],
+      "rotation": [
+        -0.6593183875083923,
+        -0.5727933049201965,
+        0.3194099962711334,
+        0.36765894293785095
+      ]
+    }
+  ],
+  "runtime": 0,
+  "replay": true,
+  "current_cache": "//cache",
+  "parameters": {
+    "schema": 1,
+    "bending_rigidity": 5e-07,
+    "linear_density": 0.0001,
+    "guide_radius": 4e-05,
+    "damping": 8.0,
+    "friction": 0.35,
+    "gravity": 9.80665,
+    "substeps": 4,
+    "length_passes": 8,
+    "impulse_sweeps": 3,
+    "length_regularization_relative": 1e-07,
+    "contact_tolerance": 0.00015,
+    "mesh_contact_mode": 2,
+    "minimum_dynamic_length": 0.3,
+    "maximum_extension_element_length": 0.01,
+    "extension_length_iterations": 16,
+    "maximum_visible_element_length": 0.0,
+    "root_points": 2
+  },
+  "parameter_hash": "f9473015f35d7d081ab5be07e23fe2b100288552af3a35456e039f6888fcd29b",
+  "binary_hash": "0c5db7c3cc80ca80b86394d25e4ff5541bb7e1af5362efd9c2245a86962a221e",
+  "display_matches_cache": true,
+  "dirty_after_save": true,
+  "source": "カーブ",
+  "collider": "CC_Base_Body",
+  "output": "Kami4_BVH_髪_計算結果",
+  "simulation_rerun": false,
+  "numerical_changes": false,
+  "parameter_changes": false
+}

@@ -1,0 +1,14 @@
+{
+  "tag": "session-end-20260917",
+  "archive": "session-end-20260917.zip",
+  "bytes": 458215262,
+  "sha256": "2b2fce23bc3c31d6140ec8eda7fbb32f84229e88ad89e6fcfb73c3fbcbfbbe77",
+  "files_verified": 212,
+  "cache_frames": 200,
+  "saved_frame": 87,
+  "scene_sha256": "3de37b0b41ce24ce69c6dd0e2766dbef8a094f112d266dfbe67b6e7b12df358c",
+  "parameters_unchanged": true,
+  "simulation_rerun": false,
+  "numerical_baseline_tag": "baseline-local-fk-adopted-20260917",
+  "parameter_hash": "f9473015f35d7d081ab5be07e23fe2b100288552af3a35456e039f6888fcd29b"
+}

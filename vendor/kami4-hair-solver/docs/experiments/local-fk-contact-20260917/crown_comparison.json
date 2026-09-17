@@ -1,0 +1,43 @@
+{
+  "reference": "outputs\\review_bvh_extension_30cm_200",
+  "definition": "World-Z highest hair minus highest body, plus shortest distances of the SAME reference free hair points whose closest body point is within 3cm of the highest body point. Not an exact screen-space silhouette gap.",
+  "frames": {
+    "71": {
+      "reference_free_points": 3714,
+      "reference_strands": 1619,
+      "fixed_second_distance_cm_max": 1.7351467162370682,
+      "runs": {
+        "outputs\\review_bvh_extension_30cm_200": {
+          "bending_rigidity": 1e-06,
+          "parameter_hash": "a0eef2920ade4fd34670c3771030d44f8ce135e56292ac99d208162871adeef0",
+          "top_vertical_gap_cm": 3.8993000984191895,
+          "same_free_points_distance_cm_p50": 3.6063071340322495,
+          "same_free_points_distance_cm_p95": 4.159039128571749,
+          "same_free_points_distance_cm_max": 4.328347370028496,
+          "highest_point_strand": 6703,
+          "highest_point_local": 3
+        },
+        "outputs\\trial2_bending50_200": {
+          "bending_rigidity": 5e-07,
+          "parameter_hash": "30b6a4c7489e6d83fc381d4bf2486d11fd91e30dee3e81b7866a248d0da02930",
+          "top_vertical_gap_cm": 3.6250710487365723,
+          "same_free_points_distance_cm_p50": 2.8972651809453964,
+          "same_free_points_distance_cm_p95": 3.4728532657027245,
+          "same_free_points_distance_cm_max": 3.669796511530876,
+          "highest_point_strand": 6704,
+          "highest_point_local": 2
+        },
+        "outputs\\local_fk_v2_200": {
+          "bending_rigidity": 5e-07,
+          "parameter_hash": "f9473015f35d7d081ab5be07e23fe2b100288552af3a35456e039f6888fcd29b",
+          "top_vertical_gap_cm": 3.461277484893799,
+          "same_free_points_distance_cm_p50": 2.8934989124536514,
+          "same_free_points_distance_cm_p95": 3.46171835437417,
+          "same_free_points_distance_cm_max": 3.675985336303711,
+          "highest_point_strand": 6730,
+          "highest_point_local": 2
+        }
+      }
+    }
+  }
+}

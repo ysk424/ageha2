@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "ageha2"
-version = "0.3.1"
+version = "0.4.0"
 name = "揚羽"
 tagline = "All-in-one hair grooming and Kami4 CUDA simulation"
 maintainer = "Y Tsukamoto"
@@ -27,11 +27,15 @@ paths = [
     "kami4_solver/addon.py",
     "kami4_solver/cache.py",
     "kami4_solver/native.py",
+    "kami4_solver/panel_parameters.py",
+    "kami4_solver/topology.py",
     "kami4_solver/parameters.json",
     "kami4_solver/README.md",
     "kami4_solver/LICENSE",
     "kami4_solver/blender_manifest.toml",
-    "kami4_solver/bin/kami4_hair_core.dll",
+    "kami4_solver/bin/kami4_hair_core_bvh1.dll",
+    "kami4_solver/bin/kami4_hair_core_fk1.dll",
+    "presets/local-fk-contact-20260917.json",
     "README.md",
     "LICENSE",
     "LICENSE-AGEHA-MIT",

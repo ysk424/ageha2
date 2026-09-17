@@ -6,7 +6,7 @@ import numpy as np
 import bpy
 from bpy.app.handlers import persistent
 from mathutils import Matrix
-from . import native, cache
+from . import native, cache, panel_parameters
 
 _runtime = {}
 _busy = False
@@ -128,7 +128,7 @@ def output_object(settings, scene, x, offsets):
                 data.points.foreach_set("radius", radius)
             except (TypeError, AttributeError):
                 pass
-        obj = bpy.data.objects.new("Kami4_髪_計算結果", data)
+        obj = bpy.data.objects.new("Kami4_BVH_髪_計算結果", data)
         scene.collection.objects.link(obj)
         obj["kami4_owned"] = True
         settings.output = obj
@@ -137,14 +137,12 @@ def output_object(settings, scene, x, offsets):
 
 
 def get_parameters(settings):
-    return native.parameters(
-        bpy.path.abspath(settings.parameter_file) if settings.parameter_file else None
-    )
+    return panel_parameters.parameters(settings)
 
 
-def initialize(scene, clear_cache=True):
+def initialize(scene, clear_cache=True, preload=False):
     global _busy
-    settings = scene.kami4
+    settings = scene.kami4_bvh
     settings.replay = False
     _busy = True
     try:
@@ -171,8 +169,12 @@ def initialize(scene, clear_cache=True):
         cols = analytic_colliders(settings, scene)
         if vertices is not None:
             solver.set_mesh(vertices, triangles)
-        solver.prepare(len(cols))
-        output = output_object(settings, scene, solver.x, offsets)
+        if preload and (cols or vertices is None):
+            solver.close()
+            raise ValueError('全範囲の入力準備はメッシュコライダーに対応しています')
+        if not preload:
+            solver.prepare(len(cols))
+        output = output_object(settings, scene, solver.x, solver.offsets)
         if not settings.cache_directory:
             parent = Path(bpy.path.abspath("//")) if bpy.data.filepath else Path.home()
             settings.cache_directory = str(parent / "kami4_cache" / time.strftime("%Y%m%d_%H%M%S"))
@@ -180,7 +182,7 @@ def initialize(scene, clear_cache=True):
         manifest = cache.create(
             directory,
             solver.x,
-            offsets,
+            solver.offsets,
             params,
             native.parameter_hash(params),
             preserve_frames=not clear_cache,
@@ -188,10 +190,14 @@ def initialize(scene, clear_cache=True):
             collider=settings.collider.name if settings.collider else None,
             blender=bpy.app.version_string,
             binary_hash=hashlib.sha256(
-                (native.ROOT / "bin/kami4_hair_core.dll").read_bytes()
+                native.BINARY_PATH.read_bytes()
             ).hexdigest(),
             repaired_strands=solver.repaired,
             fps=scene.render.fps / scene.render.fps_base,
+            root_points=settings.root_points,
+            internal_points=len(solver.internal_x),
+            extended_strands=len(solver.extended_strands),
+            preload=preload,
         )
         if clear_cache:
             manifest["frames"] = []
@@ -209,7 +215,18 @@ def initialize(scene, clear_cache=True):
             manifest=manifest,
             next_frame=settings.frame_start,
             stats=[],
+            preload=preload, capture_index=0,
+            capture_started=time.perf_counter(),
         )
+        if preload:
+            r = _runtime[scene.as_pointer()]
+            frames = settings.frame_end - settings.frame_start + 1
+            if frames <= 0:
+                raise ValueError('終了フレームは開始フレーム以降にしてください')
+            r['input_targets'] = np.empty((frames, len(p), 3), np.float32)
+            r['input_vertices'] = np.empty((frames, len(vertices), 3), np.float32)
+            r['input_triangles'] = triangles
+            r['input_raw'] = p.copy()
         settings.status = f"初期化済み {len(offsets) - 1:,}本 / {len(p):,}点 / CUDA"
         settings.last_error = ""
         return _runtime[scene.as_pointer()]
@@ -219,29 +236,61 @@ def initialize(scene, clear_cache=True):
 
 def simulate_frame(scene):
     global _busy
-    settings = scene.kami4
+    settings = scene.kami4_bvh
     r = _runtime.get(scene.as_pointer()) or initialize(scene)
+    if native.parameter_hash(get_parameters(settings)) != r['manifest']['parameter_hash']:
+        raise ValueError('設定が変わりました。新しいキャッシュ保存先で初期化してください')
     frame = r["next_frame"]
     if frame > settings.frame_end:
         return False
     _busy = True
     try:
         began = time.perf_counter()
-        scene.frame_set(frame)
-        p, offsets = hair_positions(settings.source, scene)
-        if not np.array_equal(offsets, r["offsets"]):
-            raise ValueError("髪のトポロジーが変化しました")
-        vertices, _, sig = mesh_positions(settings, scene, False)
-        if sig != r["signature"]:
-            raise ValueError("コライダーのトポロジーが変化しました")
-        cols = analytic_colliders(settings, scene)
-        st = r["solver"].step(p, cols, r["colliders"], r["vertices"], vertices)
-        update_output(settings.output, r["solver"].x, scene)
+        if r['preload'] and 'input_targets' in r:
+            j = r['capture_index']
+            scene.frame_set(settings.frame_start + j)
+            p, offsets = hair_positions(settings.source, scene)
+            vertices, _, sig = mesh_positions(settings, scene, False)
+            if not np.array_equal(offsets,r['offsets']) or sig != r['signature']:
+                raise ValueError('入力準備中にトポロジーが変化しました')
+            r['input_targets'][j] = p
+            r['input_vertices'][j] = vertices
+            r['capture_index'] += 1
+            count = len(r['input_targets'])
+            settings.status = f'入力準備 {j+1}/{count}F'
+            if j+1 == count:
+                prepared = r['directory'] / 'prepared_input'
+                prepared.mkdir(exist_ok=False)
+                for key,name in [('input_targets','targets'),('input_vertices','vertices'),('input_triangles','triangles'),('input_raw','raw_positions')]:
+                    np.save(prepared / (name+'.npy'),r[key])
+                np.save(prepared/'offsets.npy',r['offsets'])
+                r['solver'].set_animation(r['input_targets'],r['input_vertices'])
+                r['solver'].prepare(0)
+                r['input_seconds'] = time.perf_counter()-r['capture_started']
+                r['manifest']['input_seconds'] = r['input_seconds']
+                cache.save_manifest(r['directory'],r['manifest'])
+                for key in ['input_targets','input_vertices','input_triangles','input_raw']:
+                    del r[key]
+                scene.frame_set(settings.frame_start)
+                settings.status = '入力準備完了 / 全範囲を計算します'
+            return True
+        if r['preload']:
+            st = r['solver'].step_animation(frame-settings.frame_start)
+        else:
+            scene.frame_set(frame)
+            p, offsets = hair_positions(settings.source, scene)
+            if not np.array_equal(offsets, r["offsets"]):
+                raise ValueError("髪のトポロジーが変化しました")
+            vertices, _, sig = mesh_positions(settings, scene, False)
+            if sig != r["signature"]:
+                raise ValueError("コライダーのトポロジーが変化しました")
+            cols = analytic_colliders(settings, scene)
+            st = r["solver"].step(p, cols, r["colliders"], r["vertices"], vertices)
+            update_output(settings.output, r["solver"].x, scene)
+            r['vertices'],r['colliders'] = vertices,cols
         cache.write(r["directory"], frame, r["solver"].x, r["manifest"])
         st.update(frame=frame, total_ms=(time.perf_counter() - began) * 1000)
         r["stats"].append(st)
-        r["vertices"] = vertices
-        r["colliders"] = cols
         r["next_frame"] += 1
         with (r["directory"] / "stats.jsonl").open("a", encoding="utf8") as f:
             f.write(json.dumps(st) + "\n")
@@ -255,9 +304,9 @@ def simulate_frame(scene):
 
 @persistent
 def replay_handler(scene, *args):
-    if _busy or not hasattr(scene, "kami4"):
+    if _busy or not hasattr(scene, "kami4_bvh"):
         return
-    s = scene.kami4
+    s = scene.kami4_bvh
     if not s.replay or not s.output or not s.cache_directory:
         return
     try:
@@ -287,9 +336,12 @@ def load_handler(*args):
     for r in list(_runtime.values()):
         r["solver"].close()
     _runtime.clear()
+    if hasattr(bpy.types.Scene, 'kami4_bvh'):
+        for scene in bpy.data.scenes:
+            panel_parameters.migrate(scene.kami4_bvh)
 
 
-class K4Settings(bpy.types.PropertyGroup):
+class K4BVHSettings(bpy.types.PropertyGroup):
     source: bpy.props.PointerProperty(
         name="入力する髪", type=bpy.types.Object, poll=lambda s, o: o.type == "CURVES"
     )
@@ -298,84 +350,137 @@ class K4Settings(bpy.types.PropertyGroup):
     )
     collider_collection: bpy.props.PointerProperty(name="追加コライダー", type=bpy.types.Collection)
     output: bpy.props.PointerProperty(name="計算結果", type=bpy.types.Object)
-    parameter_file: bpy.props.StringProperty(name="共通パラメータ JSON", subtype="FILE_PATH")
-    cache_directory: bpy.props.StringProperty(name="Kami4 キャッシュ", subtype="DIR_PATH")
+    parameter_file: bpy.props.StringProperty(name="設定ファイル（JSON）", subtype="FILE_PATH")
+    cache_directory: bpy.props.StringProperty(name="キャッシュ保存先", subtype="DIR_PATH")
     frame_start: bpy.props.IntProperty(name="開始", default=1, min=1)
     frame_end: bpy.props.IntProperty(name="終了", default=200, min=1)
-    root_points: bpy.props.IntProperty(name="固定する根元点数", default=1, min=1, max=2)
+    root_points: bpy.props.IntProperty(name="固定する根元点数", default=2, min=1, max=2)
+    whole_strand_collision: bpy.props.BoolProperty(name='毛の全区間を衝突判定',default=True)
+    local_fk_collision: bpy.props.BoolProperty(name='局所FKで貫通を修復',description='衝突した毛の近くに支点を探し、長さを保って毛先をつなぎ直します',default=False)
+    minimum_dynamic_length: bpy.props.FloatProperty(name='シミュレーション用の最小長',description='短い毛に非表示の延長を加えます。元の表示長は変えません',default=0.2,min=0,max=1,unit='LENGTH')
+    contact_passes: bpy.props.IntProperty(name='長さと接触の反復回数',default=8,min=2,max=32)
+    preload_animation: bpy.props.BoolProperty(name='全範囲の入力を先に準備',description='身体と毛のアニメーションを先に評価してから計算します',default=True)
+    bending_log10: panel_parameters.logarithm(
+        'bending_rigidity', name='曲げ剛性（対数）',
+        description='10の指数で調整します。−6は0.000001 N・m²。1増やすと剛性が10倍になります',
+        min=-16, max=6, soft_min=-10, soft_max=-3, precision=3, step=10)
+    regularization_log10: panel_parameters.logarithm(
+        'length_regularization_relative', name='正則化（対数）',
+        description='10の指数で調整します。−7は0.0000001。1増やすと値が10倍になります',
+        min=-16, max=2, soft_min=-12, soft_max=-2, precision=3, step=10)
+    density_g_per_m: panel_parameters.number(
+        'linear_density', scale=1000, name='線密度（g/m）',
+        description='毛の単位長さ当たりの質量', min=0.000001, max=10000, soft_max=1, precision=5)
+    velocity_damping: panel_parameters.number(
+        'damping', name='速度減衰（1/秒）', description='大きいほど揺れが早く収まります',
+        min=0, max=10000, soft_max=30, precision=3)
+    surface_friction: panel_parameters.number(
+        'friction', name='摩擦係数', description='身体に触れた毛の滑りにくさ',
+        min=0, max=100, soft_max=1, precision=3)
+    gravity_acceleration: panel_parameters.number(
+        'gravity', name='重力（m/秒²）', description='下向きの加速度',
+        min=0, max=10000, soft_max=20, precision=5)
+    collision_radius_mm: panel_parameters.number(
+        'guide_radius', scale=1000, name='衝突半径（mm）',
+        description='衝突判定上の毛の半径。描画の太さとは独立です',
+        min=0.000001, max=10000, soft_max=1, precision=4)
+    contact_margin_mm: panel_parameters.number(
+        'contact_tolerance', scale=1000, name='接触マージン（mm）',
+        description='区間接触で衝突半径に加える余裕距離',
+        min=0, max=10000, soft_max=2, precision=4)
+    minimum_length_cm: bpy.props.FloatProperty(
+        name='最小計算長（cm）', description='短い毛に非表示の延長を加えます。表示する長さは変わりません',
+        get=panel_parameters.get_minimum_cm, set=panel_parameters.set_minimum_cm,
+        min=0, max=100, soft_max=60, precision=3, options=set())
+    extension_element_cm: panel_parameters.number(
+        'maximum_extension_element_length', scale=100, name='延長区間の最大長（cm）',
+        description='非表示部分を分ける区間の最大長。小さくすると計算点が増えます',
+        min=0.001, max=100, soft_max=5, precision=3)
+    time_substeps: bpy.props.EnumProperty(
+        name='時間分割数', description='1フレームを何回に分けて計算するか',
+        items=[('2','2回','1フレームを2分割',2),('4','4回','1フレームを4分割',4),('8','8回','1フレームを8分割',8)],
+        get=panel_parameters.get_substeps, set=panel_parameters.set_substeps, options=set())
+    velocity_passes: panel_parameters.integer(
+        'impulse_sweeps', name='速度・摩擦の補正回数', description='接触後の速度と摩擦を補正する回数', min=2, max=4)
+    extension_passes: panel_parameters.integer(
+        'extension_length_iterations', name='延長した毛の長さ補正回数',
+        description='非表示延長のある毛で、長さ補正の内部計算を繰り返す回数', min=1, max=16)
     replay: bpy.props.BoolProperty(name="キャッシュを再生", default=False)
     status: bpy.props.StringProperty(default="未初期化")
     diagnostics: bpy.props.StringProperty()
     last_error: bpy.props.StringProperty()
 
 
-class K4Initialize(bpy.types.Operator):
-    bl_idname = "kami4.initialize"
-    bl_label = "Initialize / 初期化"
+class K4BVHInitialize(bpy.types.Operator):
+    bl_idname = "kami4_bvh.initialize"
+    bl_label = "初期化"
 
     def execute(self, context):
         try:
             initialize(context.scene)
             return {"FINISHED"}
         except Exception as exc:
-            context.scene.kami4.last_error = str(exc)
+            context.scene.kami4_bvh.last_error = str(exc)
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
 
 
-class K4Simulate(bpy.types.Operator):
-    bl_idname = "kami4.simulate"
-    bl_label = "Simulate / 1フレーム計算"
+class K4BVHSimulate(bpy.types.Operator):
+    bl_idname = "kami4_bvh.simulate"
+    bl_label = "1フレーム計算"
 
     def execute(self, context):
         try:
             simulate_frame(context.scene)
             return {"FINISHED"}
         except Exception as exc:
-            context.scene.kami4.last_error = str(exc)
+            context.scene.kami4_bvh.last_error = str(exc)
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
 
 
-class K4Reset(bpy.types.Operator):
-    bl_idname = "kami4.reset"
-    bl_label = "Reset / 開始形状へ"
+class K4BVHReset(bpy.types.Operator):
+    bl_idname = "kami4_bvh.reset"
+    bl_label = "開始形状へ戻す"
 
     def execute(self, context):
         try:
             initialize(context.scene, clear_cache=False)
             return {"FINISHED"}
         except Exception as exc:
-            context.scene.kami4.last_error = str(exc)
+            context.scene.kami4_bvh.last_error = str(exc)
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
 
 
-class K4Bake(bpy.types.Operator):
-    bl_idname = "kami4.bake"
-    bl_label = "Bake / 全フレーム計算"
+class K4BVHBake(bpy.types.Operator):
+    bl_idname = "kami4_bvh.bake"
+    bl_label = "全フレーム計算"
     _timer = None
 
     def finish(self, context, cancel=False):
         if self._timer:
             context.window_manager.event_timer_remove(self._timer)
             self._timer = None
-        context.scene.kami4.replay = True
+        context.scene.kami4_bvh.replay = True
+        if not cancel:
+            context.scene.frame_set(context.scene.kami4_bvh.frame_end)
         return {"CANCELLED"} if cancel else {"FINISHED"}
 
     def execute(self, context):
         try:
-            initialize(context.scene)
+            initialize(context.scene, preload=context.scene.kami4_bvh.preload_animation)
             if bpy.app.background:
                 while simulate_frame(context.scene):
                     pass
-                context.scene.kami4.replay = True
+                context.scene.kami4_bvh.replay = True
+                context.scene.frame_set(context.scene.kami4_bvh.frame_end)
                 return {"FINISHED"}
             self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
             context.window_manager.modal_handler_add(self)
             return {"RUNNING_MODAL"}
         except Exception as exc:
-            context.scene.kami4.last_error = str(exc)
+            context.scene.kami4_bvh.last_error = str(exc)
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
 
@@ -389,64 +494,53 @@ class K4Bake(bpy.types.Operator):
                 for area in context.screen.areas:
                     area.tag_redraw()
             except Exception as exc:
-                context.scene.kami4.last_error = str(exc)
+                context.scene.kami4_bvh.last_error = str(exc)
                 self.report({"ERROR"}, str(exc))
                 return self.finish(context, True)
         return {"PASS_THROUGH"}
 
 
-class K4Replay(bpy.types.Operator):
-    bl_idname = "kami4.replay"
-    bl_label = "Replay / キャッシュ再生"
+class K4BVHReplay(bpy.types.Operator):
+    bl_idname = "kami4_bvh.replay"
+    bl_label = "キャッシュ再生"
 
     def execute(self, context):
-        context.scene.kami4.replay = True
+        context.scene.kami4_bvh.replay = True
         replay_handler(context.scene)
         return {"FINISHED"}
 
 
-class K4Panel(bpy.types.Panel):
-    bl_label = "Kami4 Hair Solver"
-    bl_idname = "KAMI4_PT_solver"
+class K4BVHPanel(bpy.types.Panel):
+    bl_label = "ACES 髪シミュレーション"
+    bl_idname = "KAMI4_BVH_PT_solver"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category = "Kami4"
+    bl_category = "ACES"
 
     def draw(self, context):
         layout = self.layout
-        s = context.scene.kami4
-        for name in (
-            "source",
-            "collider",
-            "collider_collection",
-            "parameter_file",
-            "cache_directory",
-        ):
-            layout.prop(s, name)
-        row = layout.row(align=True)
-        row.prop(s, "frame_start")
-        row.prop(s, "frame_end")
-        layout.prop(s, "root_points")
-        row = layout.row(align=True)
-        row.operator("kami4.initialize")
-        row.operator("kami4.reset")
-        layout.operator("kami4.simulate")
-        layout.operator("kami4.bake")
-        layout.operator("kami4.replay")
-        layout.prop(s, "replay")
-        layout.label(text=s.status)
-        layout.label(text=s.diagnostics)
-        if s.last_error:
-            layout.label(text=s.last_error, icon="ERROR")
+        s = context.scene.kami4_bvh
+        layout.label(text='設定はこのシーンに保存されます')
+        if s.output and s.output.get('kami4_parameter_hash'):
+            try:
+                changed = native.parameter_hash(get_parameters(s)) != s.output['kami4_parameter_hash']
+                if changed:
+                    layout.label(text='設定変更あり：反映には再計算が必要', icon='INFO')
+            except Exception as exc:
+                layout.label(text=str(exc), icon='ERROR')
 
 
-classes = (K4Settings, K4Initialize, K4Simulate, K4Reset, K4Bake, K4Replay, K4Panel)
+classes = (K4BVHSettings, K4BVHInitialize, K4BVHSimulate, K4BVHReset, K4BVHBake, K4BVHReplay, K4BVHPanel) + panel_parameters.classes
 
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-    bpy.types.Scene.kami4 = bpy.props.PointerProperty(type=K4Settings)
+    bpy.types.Scene.kami4_bvh = bpy.props.PointerProperty(type=K4BVHSettings)
+    # Blender restricts data access while enabling an add-on at startup.
+    # load_handler migrates the scenes once the blend has been loaded.
+    for scene in getattr(bpy.data, 'scenes', ()):
+        panel_parameters.migrate(scene.kami4_bvh)
     if replay_handler not in bpy.app.handlers.frame_change_post:
         bpy.app.handlers.frame_change_post.append(replay_handler)
     if load_handler not in bpy.app.handlers.load_post:
@@ -461,7 +555,7 @@ def unregister():
     ):
         if fn in seq:
             seq.remove(fn)
-    if hasattr(bpy.types.Scene, "kami4"):
-        del bpy.types.Scene.kami4
+    if hasattr(bpy.types.Scene, "kami4_bvh"):
+        del bpy.types.Scene.kami4_bvh
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "bending_rigidity": 1e-06,
+  "bending_rigidity": 5e-07,
   "linear_density": 0.0001,
   "guide_radius": 4e-05,
   "damping": 8.0,

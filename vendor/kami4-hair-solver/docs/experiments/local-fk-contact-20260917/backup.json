@@ -1,0 +1,10 @@
+{
+  "tag": "review-local-fk-200f-20260917",
+  "archive": "review-local-fk-200f-20260917.zip",
+  "bytes": 465603339,
+  "sha256": "3f091e08eca2227f7b6991d7680a404612dab0c93c86a54409321ddedae418f6",
+  "addon": "kami4_bvh_hair_solver-0.3.0-windows-x64.zip",
+  "addon_sha256": "59b1d1708d94f6c5f5f0a3fae8d9cf468578a0272b6009e3aad8e93c592f6400",
+  "files_verified": 223,
+  "previous_adopted_tag": "baseline-bending50-adopted-20260917"
+}

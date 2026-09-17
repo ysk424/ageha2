@@ -1,0 +1,16 @@
+{
+  "blend": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\review_bvh_extension_30cm_200\\kami4_bvh_extension_30cm.blend",
+  "frame": 102,
+  "changes": {
+    "minimum_dynamic_length": [
+      0.2,
+      0.3
+    ]
+  },
+  "binary_hash": "1cd10bd1bcd301f798d7394e30aef8d30e156bc0e7026c59500baaeedaf4d9be",
+  "parameter_hash": "a0eef2920ade4fd34670c3771030d44f8ce135e56292ac99d208162871adeef0",
+  "source": "カーブ",
+  "collider": "CC_Base_Body",
+  "frames": 200,
+  "display_matches_cache": true
+}

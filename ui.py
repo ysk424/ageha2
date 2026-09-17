@@ -5,6 +5,7 @@ import bpy
 from bpy.types import Panel
 
 from . import __version__
+from .kami4_solver import panel_parameters
 
 
 def _label(layout, text: str, *, icon: str = "NONE") -> None:
@@ -28,7 +29,7 @@ class AGEHA_PT_main(Panel):
     def draw(self, context):
         layout = self.layout
         ageha = context.scene.ageha_settings
-        sim = context.scene.kami4
+        sim = context.scene.kami4_bvh
 
         _label(layout, f"揚羽  v{__version__} / Kami4")
 
@@ -63,41 +64,58 @@ class AGEHA_PT_main(Panel):
         row = box.row(align=True)
         _prop(row, sim, "frame_start")
         _prop(row, sim, "frame_end")
-        _prop(box, sim, "root_points")
-        _prop(box, sim, "cache_directory", text="キャッシュ")
-        box.operator("ageha.new_cache", icon="FILE_REFRESH", translate=False)
+        _prop(box, sim, "preload_animation")
 
         box = layout.box()
-        _label(box, "Kami4 計算パラメータ")
-        _prop(box, sim, "parameter_file", text="読込元 JSON")
-        row = box.row(align=True)
-        row.operator("ageha.load_kami4_parameters", translate=False)
-        row.operator("ageha.restore_kami4_parameters", translate=False)
+        _label(box, "髪の性質")
+        panel_parameters.draw_log(box, sim, "bending_log10", "bending_rigidity", "N・m²")
         for name in (
-            "bending_rigidity",
-            "linear_density",
-            "guide_radius",
-            "damping",
-            "friction",
-            "gravity",
-            "substeps",
-            "length_passes",
-            "impulse_sweeps",
-            "length_regularization_relative",
-            "contact_tolerance",
+            "density_g_per_m",
+            "velocity_damping",
+            "surface_friction",
+            "gravity_acceleration",
         ):
-            _prop(box, ageha, name)
+            _prop(box, sim, name)
+
+        box = layout.box()
+        _label(box, "接触・短い毛")
+        for name in (
+            "whole_strand_collision",
+            "local_fk_collision",
+            "collision_radius_mm",
+            "contact_margin_mm",
+            "minimum_length_cm",
+            "root_points",
+            "extension_element_cm",
+        ):
+            _prop(box, sim, name)
+        _label(box, "30cm以下は計算時だけ延長し、表示時に元の長さへ復元")
+
+        box = layout.box()
+        _label(box, "計算精度と速度")
+        for name in ("time_substeps", "contact_passes", "velocity_passes", "extension_passes"):
+            _prop(box, sim, name)
+        panel_parameters.draw_log(
+            box, sim, "regularization_log10", "length_regularization_relative",
+        )
+
+        box = layout.box()
+        _label(box, "設定・キャッシュ")
+        _prop(box, sim, "parameter_file", text="設定ファイル JSON")
+        box.operator("kami4_bvh.load_parameters", icon="IMPORT", translate=False)
+        _prop(box, sim, "cache_directory", text="キャッシュ")
+        box.operator("ageha.new_cache", icon="FILE_REFRESH", translate=False)
         _label(box, "変更時は新しいキャッシュを使用")
 
         box = layout.box()
         _label(box, "Kami4 実行・再生")
         row = box.row(align=True)
-        row.operator("ageha.kami4_initialize", text="初期化", translate=False)
-        row.operator("ageha.kami4_reset", text="開始形状へ", translate=False)
+        row.operator("kami4_bvh.initialize", text="初期化", translate=False)
+        row.operator("kami4_bvh.reset", text="開始形状へ", translate=False)
         row = box.row(align=True)
-        row.operator("ageha.kami4_simulate", text="1フレーム計算", translate=False)
-        row.operator("ageha.kami4_bake", text="全フレーム計算", icon="RENDER_ANIMATION", translate=False)
-        box.operator("kami4.replay", text="キャッシュ再生", translate=False)
+        row.operator("kami4_bvh.simulate", text="1フレーム計算", translate=False)
+        row.operator("kami4_bvh.bake", text="全フレーム計算", icon="RENDER_ANIMATION", translate=False)
+        box.operator("kami4_bvh.replay", text="キャッシュ再生", translate=False)
         _prop(box, sim, "replay")
 
         status_icon = "ERROR" if sim.last_error else "CHECKMARK"

@@ -1,0 +1,14 @@
+{
+  "before": {
+    "filepath": "C:\\Users\\azoo\\git\\kami4-hair-solver\\outputs\\root2_200F_20260917_131237\\kami4_root2_200F.blend",
+    "frame": 164
+  },
+  "blend": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\review_bvh_extension_200\\kami4_bvh_extension_review.blend",
+  "frame": 164,
+  "output": "Kami4_BVH_髪_計算結果",
+  "source": "カーブ",
+  "collider": "CC_Base_Body",
+  "binary_hash": "1cd10bd1bcd301f798d7394e30aef8d30e156bc0e7026c59500baaeedaf4d9be",
+  "loaded_version": "K4-BVH 0.2.0 CUDA sm_120 ABI1",
+  "parameter_hash": "0c34912eab5b2224ec3348c970ce7f5912ca6aea42837b95900303184307702c"
+}

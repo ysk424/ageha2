@@ -1,0 +1,13 @@
+{
+  "blend": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\local_fk_v2_200\\kami4_aces_local_fk_v2.blend",
+  "frame": 71,
+  "binary_hash": "0c5db7c3cc80ca80b86394d25e4ff5541bb7e1af5362efd9c2245a86962a221e",
+  "parameter_hash": "f9473015f35d7d081ab5be07e23fe2b100288552af3a35456e039f6888fcd29b",
+  "native_version": "K4-FK 0.3.0 CUDA sm_120 ABI1",
+  "display_matches_cache": true,
+  "runtime": 0,
+  "view": "PERSP",
+  "source": "カーブ",
+  "collider": "CC_Base_Body",
+  "previous_cache": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\trial2_bending50_200"
+}

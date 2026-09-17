@@ -19,7 +19,7 @@ motion = read("motion_bound_proof.json")
 minimal = read("minimal_mesh_failure/report.json")
 meta = read("input/manifest.json")
 profiles = read("bucket_profile.json")
-binary = hashlib.sha256((ROOT / "extension/bin/kami4_hair_core.dll").read_bytes()).hexdigest()
+binary = hashlib.sha256((ROOT / "extension/bin/kami4_hair_core_bvh1.dll").read_bytes()).hexdigest()
 package = hashlib.sha256(
     (ROOT / "dist/kami4_hair_solver-0.1.0-windows-x64.zip").read_bytes()
 ).hexdigest()

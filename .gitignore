@@ -3,6 +3,7 @@
 /ageha_cache/
 /kami4_cache/
 /test_runs/
+/kami4_solver/bin/kami4_hair_core.dll
 *.pyc
 __pycache__/
 /.pytest_cache/

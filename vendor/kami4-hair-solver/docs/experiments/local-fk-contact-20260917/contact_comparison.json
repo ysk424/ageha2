@@ -1,0 +1,72 @@
+{
+  "local_fk_v2_200": {
+    "22": {
+      "crossings": 3,
+      "crossing_strands": 2,
+      "edges": [
+        63520,
+        69582,
+        69584
+      ],
+      "root_error": 0.0,
+      "finite": true,
+      "visible_length_max": 0.004791438579559326,
+      "visible_length_p99": 6.198883056640625e-06
+    },
+    "23": {
+      "crossings": 0,
+      "crossing_strands": 0,
+      "edges": [],
+      "root_error": 1.1920928955078125e-07,
+      "finite": true,
+      "visible_length_max": 0.0058155059814453125,
+      "visible_length_p99": 6.079673767089844e-06
+    },
+    "71": {
+      "crossings": 2,
+      "crossing_strands": 1,
+      "edges": [
+        63520,
+        63522
+      ],
+      "root_error": 1.1920928955078125e-07,
+      "finite": true,
+      "visible_length_max": 0.0027202963829040527,
+      "visible_length_p99": 6.258487701416016e-06
+    },
+    "100": {
+      "crossings": 3,
+      "crossing_strands": 2,
+      "edges": [
+        63520,
+        63522,
+        68704
+      ],
+      "root_error": 1.1920928955078125e-07,
+      "finite": true,
+      "visible_length_max": 0.0063152313232421875,
+      "visible_length_p99": 8.344650268554688e-06
+    },
+    "164": {
+      "crossings": 2,
+      "crossing_strands": 1,
+      "edges": [
+        63522,
+        63523
+      ],
+      "root_error": 1.1920928955078125e-07,
+      "finite": true,
+      "visible_length_max": 0.0043274760246276855,
+      "visible_length_p99": 8.344650268554688e-06
+    },
+    "200": {
+      "crossings": 0,
+      "crossing_strands": 0,
+      "edges": [],
+      "root_error": 1.1920928955078125e-07,
+      "finite": true,
+      "visible_length_max": 0.007899641990661621,
+      "visible_length_p99": 9.059906005859375e-06
+    }
+  }
+}

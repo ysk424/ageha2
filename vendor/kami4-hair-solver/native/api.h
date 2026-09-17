@@ -48,3 +48,10 @@ K4_API const char *k4_error(void);
 K4_API const char *k4_version(void);
 
 K4_API int k4_prepare(void *, int);
+// Upload immutable animation before prepare; frame indices are zero based and sequential.
+K4_API int k4_set_animation(void *, int, const float *, const float *);
+K4_API int k4_step_animation(void *, int, K4Stats *);
+// mode 0: nodes; mode 1: visible segments; mode 2: segments + local FK repair.
+K4_API int k4_set_contact_options(void *, int, const uint8_t *, int);
+// Six uint32 per strand: queries, repairs, max rewind, unresolved, moved points, active.
+K4_API int k4_fk_data(void *, uint32_t *);

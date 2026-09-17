@@ -8,6 +8,7 @@ import time
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent
+BINARY_PATH = ROOT / "bin/kami4_hair_core_fk1.dll"
 F3 = C.c_float * 3
 F4 = C.c_float * 4
 
@@ -125,17 +126,21 @@ def library():
     global _lib
     if _lib:
         return _lib
-    lib = C.CDLL(str(ROOT / "bin/kami4_hair_core.dll"))
+    lib = C.CDLL(str(BINARY_PATH))
     P = C.c_void_p
     I = C.c_int
     lib.k4_create.argtypes = [C.POINTER(Config), I, I, P, P, P, I, C.POINTER(P)]
     lib.k4_set_mesh.argtypes = [P, I, P, I, P]
     lib.k4_prepare.argtypes = [P, I]
+    lib.k4_set_animation.argtypes = [P, I, P, P]
+    lib.k4_step_animation.argtypes = [P, I, C.POINTER(Stats)]
+    lib.k4_set_contact_options.argtypes = [P, I, P, I]
     lib.k4_step.argtypes = [P, P, P, P, I, P, P, C.POINTER(Stats)]
     lib.k4_download.argtypes = [P, P, P]
     lib.k4_set_state.argtypes = [P, P, P]
     lib.k4_contact_data.argtypes = [P, P]
     lib.k4_point_data.argtypes = [P, P]
+    lib.k4_fk_data.argtypes = [P, P]
     lib.k4_probe.argtypes = [P, I, P, P, I]
     lib.k4_destroy.argtypes = [P]
     lib.k4_destroy.restype = None
@@ -164,6 +169,8 @@ class Solver:
         self.offsets = array(offsets, np.uint32)
         self.v = np.zeros_like(self.x)
         self.fixed = np.zeros(len(self.x), np.uint8) if fixed is None else array(fixed, np.uint8)
+        self.input_x = self.x.copy()
+        self.input_offsets = self.offsets.copy()
         if self.x.ndim != 2 or self.x.shape[1] != 3 or len(self.fixed) != len(self.x):
             raise ValueError("Invalid point arrays")
         if not np.isfinite(self.x).all():
@@ -184,6 +191,27 @@ class Solver:
                 self.repair_target_map.append(
                     (a + int(local), a + edge, a + edge + 1, float(weight))
                 )
+        try:
+            from .topology import extend
+        except ImportError:
+            from topology import extend
+        topology = extend(self.x, self.offsets, self.fixed,
+                          self.p.get("minimum_dynamic_length", 0.0),
+                          self.p.get("maximum_extension_element_length", 0.01),
+                          self.p.get("maximum_visible_element_length", 0.0))
+        self.visible_indices = topology["visible_indices"]
+        self.original_indices = topology["original_indices"]
+        self.internal_x = topology["positions"]
+        self.internal_v = np.zeros_like(self.internal_x)
+        self.internal_offsets = topology["offsets"]
+        self.internal_fixed = topology["fixed"]
+        self.contact_enabled = topology["contact_enabled"]
+        self.extended_strands = topology["extended_strands"]
+        self.total_extension_length = topology["total_extension_length"]
+        self.x = self.internal_x[self.visible_indices].copy()
+        self.v = np.zeros_like(self.x)
+        self.fixed = self.internal_fixed[self.visible_indices]
+        self.offsets = topology["visible_offsets"]
         self.config = Config(
             dt,
             self.p["bending_rigidity"],
@@ -203,11 +231,11 @@ class Solver:
         self.check(
             self.lib.k4_create(
                 C.byref(self.config),
-                len(self.x),
-                len(self.offsets) - 1,
-                ptr(self.x),
-                ptr(self.offsets),
-                ptr(self.fixed),
+                len(self.internal_x),
+                len(self.internal_offsets) - 1,
+                ptr(self.internal_x),
+                ptr(self.internal_offsets),
+                ptr(self.internal_fixed),
                 max_colliders,
                 C.byref(self.handle),
             )
@@ -216,6 +244,18 @@ class Solver:
         self.mesh_triangles = None
         self.slots = max_colliders + 1
         self.prepared_count = None
+        self.check(self.lib.k4_set_contact_options(self.handle, int(self.p.get("mesh_contact_mode", 0)), ptr(self.contact_enabled), int(self.p.get("extension_length_iterations", 4))))
+
+    def _internal_targets(self, targets):
+        if len(self.internal_x) == len(self.input_x):
+            return targets
+        if targets.ndim == 2:
+            data = self.internal_x.copy()
+            data[self.original_indices] = targets
+        else:
+            data = np.broadcast_to(self.internal_x, (len(targets), *self.internal_x.shape)).copy()
+            data[:, self.original_indices] = targets
+        return data
 
     def check(self, code):
         if code:
@@ -252,14 +292,15 @@ class Solver:
         if previous_colliders is not None and len(previous_colliders) != len(colliders):
             raise ValueError("Collider count changed; reinitialize")
         supplied_targets = targets is not None
-        targets = array(self.x if targets is None else targets)
+        targets = array(self.internal_x[self.original_indices] if targets is None else targets)
         if supplied_targets and self.repair_target_map:
             raw_targets = targets
             targets = targets.copy()
             for index, a, b, weight in self.repair_target_map:
                 targets[index] = raw_targets[a] * (1 - weight) + raw_targets[b] * weight
-        if targets.shape != self.x.shape or not np.isfinite(targets).all():
+        if targets.shape != self.input_x.shape or not np.isfinite(targets).all():
             raise ValueError("Invalid root targets")
+        targets = self._internal_targets(targets)
         a = (Collider * len(colliders))(
             *(colliders if previous_colliders is None else previous_colliders)
         )
@@ -284,22 +325,60 @@ class Solver:
             stats.download_ms += (time.perf_counter() - began) * 1000
         return stats.as_dict()
 
+    def set_animation(self, targets, vertices=None):
+        if self.prepared_count is not None:
+            raise ValueError("Set animation before prepare")
+        targets = array(targets)
+        if targets.ndim != 3 or targets.shape[1:] != self.input_x.shape:
+            raise ValueError("Animation target shape mismatch")
+        if self.repair_target_map:
+            raw = targets
+            targets = targets.copy()
+            for index, a, b, weight in self.repair_target_map:
+                targets[:, index] = raw[:, a] * (1 - weight) + raw[:, b] * weight
+        vertices = array(vertices) if vertices is not None else None
+        if vertices is not None and vertices.shape != (len(targets), self.mesh_count, 3):
+            raise ValueError("Animation mesh shape mismatch")
+        targets = self._internal_targets(targets)
+        self.check(self.lib.k4_set_animation(self.handle, len(targets), ptr(targets), ptr(vertices) if vertices is not None else None))
+        self.animation_frames = len(targets)
+
+    def step_animation(self, frame, download=True):
+        if self.prepared_count is None:
+            self.prepare(0)
+        stats = Stats()
+        self.check(self.lib.k4_step_animation(self.handle, frame, C.byref(stats)))
+        if download:
+            began = time.perf_counter()
+            self.download()
+            stats.download_ms += (time.perf_counter() - began) * 1000
+        return stats.as_dict()
+
     def download(self):
-        self.check(self.lib.k4_download(self.handle, ptr(self.x), ptr(self.v)))
+        self.check(self.lib.k4_download(self.handle, ptr(self.internal_x), ptr(self.internal_v)))
+        self.x[:] = self.internal_x[self.visible_indices]
+        self.v[:] = self.internal_v[self.visible_indices]
         return self.x
 
     def contact_data(self):
-        data = np.empty((len(self.x), self.slots, 13), np.float32)
+        data = np.empty((len(self.internal_x), self.slots, 13), np.float32)
         self.check(self.lib.k4_contact_data(self.handle, ptr(data)))
-        return data
+        return data[self.visible_indices]
 
     def point_data(self):
-        data = np.empty((len(self.x), 8), np.float32)
+        data = np.empty((len(self.internal_x), 8), np.float32)
         self.check(self.lib.k4_point_data(self.handle, ptr(data)))
+        return data[self.visible_indices]
+
+    def fk_data(self):
+        data = np.empty((len(self.internal_offsets)-1, 6), np.uint32)
+        self.check(self.lib.k4_fk_data(self.handle, ptr(data)))
         return data
 
     def probe(self, mode, target=None, colliders=()):
         target = array(target) if target is not None else None
+        if target is not None:
+            target = self._internal_targets(target)
         cols = (Collider * len(colliders))(*colliders)
         self.check(self.lib.k4_probe(self.handle, mode, ptr(target), cols, len(cols)))
         self.download()
@@ -307,11 +386,13 @@ class Solver:
     def set_state(self, x, v):
         x = array(x)
         v = array(v)
-        if x.shape != self.x.shape or v.shape != x.shape:
+        if x.shape != self.internal_x.shape or v.shape != x.shape:
             raise ValueError("State shape mismatch")
         self.check(self.lib.k4_set_state(self.handle, ptr(x), ptr(v)))
-        self.x[:] = x
-        self.v[:] = v
+        self.internal_x[:] = x
+        self.internal_v[:] = v
+        self.x[:] = x[self.visible_indices]
+        self.v[:] = v[self.visible_indices]
 
     def close(self):
         if getattr(self, "handle", None):

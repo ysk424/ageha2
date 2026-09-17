@@ -1,5 +1,7 @@
 # Kami4 実行結果 — 2026-09-17
 
+> 初版0.1.0の実測記録です。現行の採用版・局所FK v2の結果と検証範囲は [ACES現行設計書](ACES_DESIGN_JA.md) と [局所FK実験記録](experiments/local-fk-contact-20260917/README.md) を参照してください。下記の結果を現在の完全設定で再実行した結果とは扱いません。
+
 **一括受入: 不合格。** 動作するBlender拡張、200frameの計算・cache再生、3試験、10万点benchmarkを作成した。未達を成功とは扱わない。機械可読の全判定は [acceptance.json](../outputs/acceptance.json)。
 
 ## 保存場所と入力

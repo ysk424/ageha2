@@ -51,7 +51,7 @@ report = dict(
     gpu=subprocess.check_output(
         ["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"], text=True
     ).strip(),
-    binary_hash=hashlib.sha256((native.ROOT / "bin/kami4_hair_core.dll").read_bytes()).hexdigest(),
+    binary_hash=hashlib.sha256((native.ROOT / "bin/kami4_hair_core_bvh1.dll").read_bytes()).hexdigest(),
     parameter_hash=native.parameter_hash(p),
     parameters=p,
     native_median=float(np.median([r["native_ms"] for r in rows])),

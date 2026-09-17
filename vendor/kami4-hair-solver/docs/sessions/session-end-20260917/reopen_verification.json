@@ -1,0 +1,14 @@
+{
+  "reopen_pass": true,
+  "saved_frame": 87,
+  "cache_crc_frames": 200,
+  "replay_frames": [
+    87,
+    1,
+    200
+  ],
+  "parameters_exact": true,
+  "binary_exact": true,
+  "simulation_executed": false,
+  "missing_external_images": []
+}

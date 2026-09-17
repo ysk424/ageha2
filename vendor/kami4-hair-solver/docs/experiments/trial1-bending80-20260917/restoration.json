@@ -1,0 +1,30 @@
+{
+  "blend": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\restored_after_trial1_20260917_154647\\kami4_aces_restored_bending.blend",
+  "frame": 102,
+  "cache": "C:\\Users\\azoo\\git\\kami4-bvh-experiment\\outputs\\review_bvh_extension_30cm_200",
+  "parameters": {
+    "schema": 1,
+    "bending_rigidity": 1e-06,
+    "linear_density": 0.0001,
+    "guide_radius": 4e-05,
+    "damping": 8.0,
+    "friction": 0.35,
+    "gravity": 9.80665,
+    "substeps": 4,
+    "length_passes": 8,
+    "impulse_sweeps": 3,
+    "length_regularization_relative": 1e-07,
+    "contact_tolerance": 0.00015,
+    "mesh_contact_mode": 1,
+    "minimum_dynamic_length": 0.3,
+    "maximum_extension_element_length": 0.01,
+    "extension_length_iterations": 16,
+    "maximum_visible_element_length": 0.0,
+    "root_points": 2
+  },
+  "parameter_hash": "a0eef2920ade4fd34670c3771030d44f8ce135e56292ac99d208162871adeef0",
+  "binary_hash": "1cd10bd1bcd301f798d7394e30aef8d30e156bc0e7026c59500baaeedaf4d9be",
+  "display_matches_baseline": true,
+  "runtime": 0,
+  "simulation_executed": false
+}

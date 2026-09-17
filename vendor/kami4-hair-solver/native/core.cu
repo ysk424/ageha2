@@ -1,3 +1,4 @@
+#include "segment_geometry.cuh"
 #include "api.h"
 #include <algorithm>
 #include <array>
@@ -213,13 +214,21 @@ struct Device {
     Node *nodes;
     Tri *tris;
     int *order;
+    int animation_frames;
+    int *animation_frame;
+    V *animation_targets, *animation_mesh;
+    V *mesh_previous;
+    int mesh_contact_mode, extension_length_iterations;
+    uint8_t *contact_enabled;
+    V *fk_correction;
+    uint32_t *fk_diag;
 };
 __device__ Hit mesh_hit(Device d, V x, int &overflow) {
     Hit h{d.cfg.contact_tolerance, {}, {}, {}, -1};
     if (!d.nt)
         return h;
-    float best =
-        (d.cfg.radius + d.cfg.contact_tolerance) * (d.cfg.radius + d.cfg.contact_tolerance);
+    float radius = d.cfg.radius + d.cfg.contact_tolerance;
+    float best = radius * radius;
     int stack[64], top = 0;
     stack[top++] = 0;
     V bary;
@@ -268,8 +277,10 @@ __device__ Hit mesh_hit(Device d, V x, int &overflow) {
 }
 __global__ void blend_mesh(Device d, float t) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < d.nv)
+    if (i < d.nv) {
         d.mesh[i] = mix(d.mesh0[i], d.mesh1[i], t);
+        d.mesh_previous[i] = mix(d.mesh0[i], d.mesh1[i], t - 1.0f / d.cfg.substeps);
+    }
 }
 __global__ void refit(Device d, int depth) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -284,6 +295,10 @@ __global__ void refit(Device d, int depth) {
             Tri t = d.tris[d.order[n.first + k]];
             lo = minv(lo, minv(d.mesh[t.a], minv(d.mesh[t.b], d.mesh[t.c])));
             hi = maxv(hi, maxv(d.mesh[t.a], maxv(d.mesh[t.b], d.mesh[t.c])));
+            if (d.mesh_contact_mode) {
+                lo = minv(lo, minv(d.mesh_previous[t.a], minv(d.mesh_previous[t.b], d.mesh_previous[t.c])));
+                hi = maxv(hi, maxv(d.mesh_previous[t.a], maxv(d.mesh_previous[t.b], d.mesh_previous[t.c])));
+            }
         }
     } else {
         lo = minv(d.nodes[n.left].lo, d.nodes[n.right].lo);
@@ -297,6 +312,21 @@ __global__ void begin_frame(Device d) {
     if (i < d.n) {
         d.diag[i] = {};
         d.diag[i].gap = 1e20f;
+    }
+    if (i < d.s) for (int k = 0; k < 6; ++k) d.fk_diag[6*i+k] = 0;
+}
+__global__ void load_animation(Device d) {
+    if (!d.animation_frames)
+        return;
+    int frame = *d.animation_frame;
+    if (frame < 0)
+        return;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < d.n)
+        d.target1[i] = d.animation_targets[(size_t)frame * d.n + i];
+    if (i < d.nv) {
+        d.mesh0[i] = d.animation_mesh[(size_t)(frame > 0 ? frame - 1 : 0) * d.nv + i];
+        d.mesh1[i] = d.animation_mesh[(size_t)frame * d.nv + i];
     }
 }
 __global__ void bend(Device d, float t) {
@@ -355,6 +385,8 @@ __global__ void length_solve(Device d) {
         return;
     s = d.short_ids[s];
     int a = d.offsets[s], b = d.offsets[s + 1];
+    int iterations = d.contact_enabled && !d.contact_enabled[b - 1] ? d.extension_length_iterations : 1;
+    for (int iteration = 0; iteration < iterations; ++iteration) {
     for (int i = a; i < b - 1; i++) {
         V delta = d.x[i + 1] - d.x[i];
         float len = norm(delta), w = d.w[i] + d.w[i + 1];
@@ -386,6 +418,7 @@ __global__ void length_solve(Device d) {
         if (i < b - 1)
             delta = delta - d.dir[i] * d.tr[i];
         d.x[i] = d.x[i] + delta * d.w[i];
+    }
     }
 }
 // Parallel affine prefix solves the bandwidth-two triangular recurrence.
@@ -469,6 +502,8 @@ __global__ void length_long(Device d, int offset) {
     __shared__ float aa[2][256], bb[2][256], cc[2][256], rr[2][256];
     int s = d.long_ids[blockIdx.x + offset], a = d.offsets[s], b = d.offsets[s + 1],
         j = threadIdx.x, i = a + j, n = b - a - 1;
+    int iterations = d.contact_enabled && !d.contact_enabled[b - 1] ? d.extension_length_iterations : 1;
+    for (int iteration = 0; iteration < iterations; ++iteration) {
     if (j < n) {
         V delta = d.x[i + 1] - d.x[i];
         d.dir[i] = unit(delta);
@@ -521,10 +556,12 @@ __global__ void length_long(Device d, int offset) {
             delta = delta - d.dir[i] * d.tr[i];
         d.x[i] = d.x[i] + delta * d.w[i];
     }
+    __syncthreads();
+    }
 }
 __global__ void project(Device d, float t) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= d.n || d.fixed[i])
+    if (i >= d.n || d.fixed[i] || (d.contact_enabled && !d.contact_enabled[i]))
         return;
     V x = d.x[i];
     float h = d.cfg.dt / d.cfg.substeps;
@@ -574,12 +611,15 @@ __global__ void project(Device d, float t) {
         x[d.cfg.plane_axis] = d.cfg.plane_coordinate;
     d.x[i] = x;
 }
+#include "segment_contact.inl"
+#include "local_fk_contact.inl"
 __global__ void reconstruct(Device d) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= d.n)
         return;
     float h = d.cfg.dt / d.cfg.substeps;
     V v = (d.x[i] - d.old[i]) / h;
+    if (d.mesh_contact_mode == 2 && d.nt) v = v - d.fk_correction[i] / h;
     if (!d.fixed[i])
         for (int c = 0; c < d.slots; c++) {
             Contact &con = d.contacts[i * d.slots + c];
@@ -598,7 +638,7 @@ __global__ void reconstruct(Device d) {
 }
 __global__ void impulse(Device d) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= d.n || d.fixed[i])
+    if (i >= d.n || d.fixed[i] || (d.contact_enabled && !d.contact_enabled[i]))
         return;
     V v = d.v[i];
     float w = d.w[i];
@@ -644,7 +684,7 @@ __global__ void diagnostics(Device d, float t) {
     st.motion += (disp > .25f * minl * (1 + 1e-5f));
     st.bad |= !(isfinite(d.x[i].x) && isfinite(d.x[i].y) && isfinite(d.x[i].z) &&
                 isfinite(d.v[i].x) && isfinite(d.v[i].y) && isfinite(d.v[i].z));
-    if (d.fixed[i])
+    if (d.fixed[i] || (d.contact_enabled && !d.contact_enabled[i]))
         return;
     for (int c = 0; c < d.slots; c++) {
         Contact con = d.contacts[i * d.slots + c];
@@ -677,6 +717,8 @@ struct Handle {
     cudaGraph_t graph{};
     cudaGraphExec_t graph_exec{};
     int kernel_launches = 0;
+    bool resident_call = false;
+    int next_animation_frame = 0;
 };
 static void ck(cudaError_t e) {
     if (e != cudaSuccess)
@@ -734,7 +776,7 @@ K4_API const char *k4_error() {
     return error.c_str();
 }
 K4_API const char *k4_version() {
-    return "K4-FBS 0.1.0 CUDA sm_120 ABI1";
+    return "K4-FK 0.3.0 CUDA sm_120 ABI1";
 }
 K4_API void k4_destroy(void *ptr) {
     if (!ptr)
@@ -777,8 +819,8 @@ K4_API int k4_create(const K4Config *cfg, int n, int s, const float *positions,
               cfg->damping >= 0 && cfg->friction >= 0 && cfg->regularization > 0))
             throw std::runtime_error("Invalid material");
         if ((cfg->substeps != 2 && cfg->substeps != 4 && cfg->substeps != 8) || cfg->passes < 2 ||
-            cfg->passes > 4 || cfg->impulses < 2 || cfg->impulses > 4)
-            throw std::runtime_error("Budget must be substeps 2/4/8 and P/I 2..4");
+            cfg->passes > 32 || cfg->impulses < 2 || cfg->impulses > 4)
+            throw std::runtime_error("Budget must be substeps 2/4/8, P 2..32 and I 2..4");
         if (cfg->plane_axis < -1 || cfg->plane_axis > 2)
             throw std::runtime_error("Invalid plane axis");
         for (int k = 0; k < s; k++)
@@ -843,6 +885,8 @@ K4_API int k4_create(const K4Config *cfg, int n, int s, const float *positions,
         d.col1 = alloc<K4Collider>(*h, capacity);
         d.contacts = alloc<Contact>(*h, n * d.slots);
         d.diag = alloc<PointDiag>(*h, n);
+        d.fk_correction = alloc<V>(*h, n);
+        d.fk_diag = alloc<uint32_t>(*h, s * 6);
         std::vector<float> mass(n), w(n), rest(n);
         std::vector<double> b0(n), b1(n), b2(n), l0(n), l1(n), l2(n);
         const V *x = (const V *)positions;
@@ -962,12 +1006,14 @@ K4_API int k4_set_mesh(void *ptr, int nv, const float *positions, int nt,
         d.mesh0 = alloc<V>(h, nv);
         d.mesh1 = alloc<V>(h, nv);
         d.mesh = alloc<V>(h, nv);
+        d.mesh_previous = alloc<V>(h, nv);
         d.tris = alloc<Tri>(h, nt);
         d.order = alloc<int>(h, nt);
         d.nodes = alloc<Node>(h, nodes.size());
         upload(d.mesh0, verts.data(), nv);
         upload(d.mesh1, verts.data(), nv);
         upload(d.mesh, verts.data(), nv);
+        upload(d.mesh_previous, verts.data(), nv);
         upload(d.tris, tris.data(), nt);
         upload(d.order, ids.data(), nt);
         upload(d.nodes, nodes.data(), nodes.size());
@@ -980,6 +1026,10 @@ K4_API int k4_set_mesh(void *ptr, int nv, const float *positions, int nt,
 static int launch_fixed_frame(Handle &h) {
     Device d = h.d;
     int blocks = (d.n + 127) / 128, sb = (d.short_count + 63) / 64, launches = 1;
+    if (d.animation_frames) {
+        load_animation<<<(std::max(d.n, d.nv) + 127) / 128, 128, 0, h.stream>>>(d);
+        launches++;
+    }
     begin_frame<<<blocks, 128, 0, h.stream>>>(d);
     for (int sub = 0; sub < d.cfg.substeps; sub++) {
         float t = float(sub + 1) / d.cfg.substeps;
@@ -1014,8 +1064,27 @@ static int launch_fixed_frame(Handle &h) {
                 }
             project<<<blocks, 128, 0, h.stream>>>(d, t);
             launches++;
+            if (d.nt && d.mesh_contact_mode) {
+                if (p == 0) {
+                    project_segments<true><<<blocks, 128, 0, h.stream>>>(d, 0);
+                    project_segments<true><<<blocks, 128, 0, h.stream>>>(d, 1);
+                } else {
+                    project_segments<false><<<blocks, 128, 0, h.stream>>>(d, 0);
+                    project_segments<false><<<blocks, 128, 0, h.stream>>>(d, 1);
+                }
+                launches += 2;
+            }
         }
         project<<<blocks, 128, 0, h.stream>>>(d, t);
+        if (d.nt && d.mesh_contact_mode) {
+            project_segments<false><<<blocks, 128, 0, h.stream>>>(d, 0);
+            project_segments<false><<<blocks, 128, 0, h.stream>>>(d, 1);
+            launches += 2;
+        }
+        if (d.nt && d.mesh_contact_mode == 2) {
+            repair_local_fk<<<(d.s + 63) / 64, 64, 0, h.stream>>>(d);
+            launches++;
+        }
         reconstruct<<<blocks, 128, 0, h.stream>>>(d);
         launches += 2;
         for (int j = 0; j < d.cfg.impulses; j++) {
@@ -1054,10 +1123,12 @@ K4_API int k4_prepare(void *ptr, int nc) {
 K4_API int k4_step(void *ptr, const float *target, const K4Collider *col0, const K4Collider *col1,
                    int nc, const float *mesh0, const float *mesh1, K4Stats *out) {
     try {
-        if (!ptr || !target || !out)
+        if (!ptr || !out)
             throw std::runtime_error("Null step pointer");
         Handle &h = *(Handle *)ptr;
         Device &d = h.d;
+        if (!target && !(h.resident_call && d.animation_frames))
+            throw std::runtime_error("Missing targets");
         if (nc < 0 || nc >= d.slots || (nc && (!col0 || !col1)))
             throw std::runtime_error("Collider capacity exceeded");
         for (int c = 0; c < nc; c++) {
@@ -1079,10 +1150,16 @@ K4_API int k4_step(void *ptr, const float *target, const K4Collider *col0, const
             throw std::runtime_error(
                 "Call k4_prepare after topology setup; collider count is immutable");
         auto t0 = Clock::now();
-        upload(d.target1, (const V *)target, d.n);
+        if (!h.resident_call) {
+            if (d.animation_frames) {
+                int inactive = -1;
+                upload(d.animation_frame, &inactive, 1);
+            }
+            upload(d.target1, (const V *)target, d.n);
+        }
         upload(d.col0, col0, nc);
         upload(d.col1, col1, nc);
-        if (d.nt) {
+        if (d.nt && !h.resident_call) {
             if (!mesh0 || !mesh1)
                 throw std::runtime_error("Mesh animation missing");
             upload(d.mesh0, (const V *)mesh0, d.nv);
@@ -1262,6 +1339,9 @@ K4_API int k4_probe(void *ptr, int mode, const float *target, const K4Collider *
         else if (mode == 3) {
             reconstruct<<<b, 128>>>(d);
             impulse<<<b, 128>>>(d);
+        } else if (mode == 5) {
+            begin_frame<<<b, 128>>>(d);
+            repair_local_fk<<<(d.s + 63) / 64, 64>>>(d);
         } else if (mode == 4)
             impulse<<<b, 128>>>(d);
         else
@@ -1273,4 +1353,61 @@ K4_API int k4_probe(void *ptr, int mode, const float *target, const K4Collider *
         error = e.what();
         return 6;
     }
+}
+K4_API int k4_set_animation(void *ptr, int frames, const float *targets, const float *vertices) {
+    try {
+        if (!ptr || frames < 1 || !targets) throw std::runtime_error("Invalid animation");
+        Handle &h = *(Handle *)ptr;
+        Device &d = h.d;
+        if (h.graph_exec || d.animation_frames) throw std::runtime_error("Animation must be set once before prepare");
+        if (d.nv && !vertices) throw std::runtime_error("Missing animated mesh");
+        d.animation_frame = alloc<int>(h, 1);
+        d.animation_targets = alloc<V>(h, (size_t)frames * d.n);
+        d.animation_mesh = alloc<V>(h, (size_t)frames * d.nv);
+        int inactive = -1;
+        upload(d.animation_frame, &inactive, 1);
+        upload(d.animation_targets, (const V *)targets, (size_t)frames * d.n);
+        upload(d.animation_mesh, (const V *)vertices, (size_t)frames * d.nv);
+        d.animation_frames = frames;
+        h.next_animation_frame = 0;
+        return 0;
+    } catch (const std::exception &e) { error = e.what(); return 8; }
+}
+K4_API int k4_step_animation(void *ptr, int frame, K4Stats *out) {
+    try {
+        if (!ptr || !out) throw std::runtime_error("Null animation handle");
+        Handle &h = *(Handle *)ptr;
+        if (frame != h.next_animation_frame || frame < 0 || frame >= h.d.animation_frames)
+            throw std::runtime_error("Animation frames must be sequential");
+        if (!h.graph_exec || h.d.nc != 0) throw std::runtime_error("Prepare mesh-only animation first");
+        auto began = Clock::now();
+        upload(h.d.animation_frame, &frame, 1);
+        double upload_ms = ms(began, Clock::now());
+        h.resident_call = true;
+        int result = k4_step(ptr, nullptr, nullptr, nullptr, 0, nullptr, nullptr, out);
+        h.resident_call = false;
+        if (!result) { h.next_animation_frame++; out->upload_ms += upload_ms; }
+        return result;
+    } catch (const std::exception &e) { error = e.what(); return 9; }
+}
+K4_API int k4_set_contact_options(void *ptr, int mode, const uint8_t *mask, int extension_iterations) {
+    try {
+        if (!ptr || mode < 0 || mode > 2 || !mask || extension_iterations < 1 || extension_iterations > 16) throw std::runtime_error("Invalid contact options");
+        Handle &h = *(Handle *)ptr;
+        if (h.graph_exec || h.d.contact_enabled) throw std::runtime_error("Set contact options once before prepare");
+        h.d.contact_enabled = alloc<uint8_t>(h, h.d.n);
+        upload(h.d.contact_enabled, mask, h.d.n);
+        h.d.mesh_contact_mode = mode;
+        h.d.extension_length_iterations = extension_iterations;
+        return 0;
+    } catch (const std::exception &e) { error = e.what(); return 10; }
+}
+
+K4_API int k4_fk_data(void *ptr, uint32_t *out) {
+    try {
+        if (!ptr || !out) throw std::runtime_error("Null FK diagnostic download");
+        Device &d = ((Handle *)ptr)->d;
+        ck(cudaMemcpy(out, d.fk_diag, d.s * 6 * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+        return 0;
+    } catch (const std::exception &e) { error = e.what(); return 11; }
 }

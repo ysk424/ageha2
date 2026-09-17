@@ -46,7 +46,7 @@ for size in (8, 16, 32, 64, 128, 256):
 report = dict(
     parameter_hash=parameter_hash(p),
     binary_hash=hashlib.sha256(
-        (ROOT / "extension/bin/kami4_hair_core.dll").read_bytes()
+        (ROOT / "extension/bin/kami4_hair_core_bvh1.dll").read_bytes()
     ).hexdigest(),
     warmup=20,
     measured=60,

@@ -1,0 +1,21 @@
+{
+  "reference": {
+    "bending": 1e-06,
+    "upper_vertical_gap_cm": 3.8993000984191895,
+    "same_free_point_count": 3714,
+    "nearest_distance_cm_p50": 3.6063071340322495,
+    "nearest_distance_cm_p95": 4.159039128571749,
+    "nearest_distance_cm_max": 4.328347370028496
+  },
+  "bending80": {
+    "bending": 8e-07,
+    "upper_vertical_gap_cm": 3.7696361541748047,
+    "same_free_point_count": 3714,
+    "nearest_distance_cm_p50": 3.4437326714396477,
+    "nearest_distance_cm_p95": 3.8160099834203725,
+    "nearest_distance_cm_max": 3.961041197180748
+  },
+  "frame": 71,
+  "body_triangulation_distance_difference_max_m": 0.0,
+  "definition": "Same free hair points in the reference crown region; cached body triangles give equal distances to live mesh within 2 micrometres."
+}

@@ -1,0 +1,2 @@
+# Preserve the exact bytes and SHA256 of the user-provided original specification.
+*.original.md -text -whitespace

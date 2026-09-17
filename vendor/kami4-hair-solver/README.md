@@ -1,14 +1,27 @@
 # Kami4 Hair Solver
 
-Blender 5.2 / Windows x64 / CUDA の固定予算ヘアーソルバーです。C++20/CUDAコア、Blender拡張、T1～T3、実髪200フレーム、10万点ベンチマークを一つのリポジトリに実装しています。
+Blender 5.2 / Windows x64 / CUDA のヘアーソルバーです。現在の画面名は **ACES**。線形曲げ・長さ補正・速度impulseを基本とし、身体メッシュのBVH接触と、残った接触を修復する局所FKを組み合わせています。
 
-**現在の復帰用基準点: `baseline-root2-200f-20260917`。** 根元2点固定、200Fを80.80秒、平均0.404秒/F。ソース・設定・DLL・シーン・キャッシュを対応付けた [復帰手順と既知の問題](docs/CHECKPOINTS.md) を保存しています。以下の初回検証資料には根元1点固定の結果も含みます。
+**2026-09-17 作業終了・再開時は [引き継ぎメモ](docs/RESUME_JA.md) を先に確認してください。** 87Fの画面を別名保存し、電源断用の一式を `session-end-20260917` に記録しています。
 
-**現時点の判定は不合格です。** 3試験と200フレームの計算・再生は動作しますが、元アニメーションの移動上限、一部のmesh接触、および厳密な微小残差のCPU/GPU相対比較に未達があります。完成した操作機能と、研究仮説の合否を区別しています。[実測結果](docs/RESULTS_JA.md)を参照してください。
+**現在の採用・復帰点は `baseline-local-fk-adopted-20260917` です。** 根元2点固定、曲げ剛性5e-7、最小計算長30cm、局所FK v2。採用済み200Fは106.94秒、平均0.535秒/F（計算とcache保存、レンダリングを除く）。実髪でのユーザー採用と、原仕様の全受入条件の合格は区別しています。
+
+- [日本語の現行設計書](docs/ACES_DESIGN_JA.md)：原仕様との差分、処理図、数式、GPU配置、設定、検証範囲。
+- [完全な採用パラメータ](presets/local-fk-contact-20260917.json)：材料の既定JSONだけでは採用状態を再現できません。
+- [実験・採用記録](docs/experiments/local-fk-contact-20260917/README.md)と[復帰手順・全保存点](docs/CHECKPOINTS.md)。
+- [採用Release](https://github.com/ysk424/kami4-hair-solver/releases/tag/baseline-local-fk-adopted-20260917)：対応するソース・拡張・シーン・200F cacheの保存点。
+
+採用シーンは `outputs/local_fk_v2_200/kami4_aces_local_fk_v2.blend`、拡張は `dist/kami4_bvh_hair_solver-0.3.0-windows-x64.zip`。日本語Nパネル「ACES」で保存済みcacheを再生できます。元の入力blendは上書きしていません。再現計算は[設計書の手順](docs/ACES_DESIGN_JA.md#132-再計算する場合のコマンド)を使用し、既存の結果を上書きしないでください。
+
+## 初版0.1.0の記録
+
+以下は初版の操作・検証資料です。現在の拡張名、設定、保存先とは異なります。旧復帰点 `baseline-root2-200f-20260917` も保持しています（根元2点固定、200F 80.80秒、平均0.404秒/F）。初回検証には根元1点固定の結果も含みます。
+
+**初版の一括受入判定は不合格でした。** 3試験と200フレームの計算・再生は動作しましたが、元アニメーションの移動上限、一部のmesh接触、および厳密な微小残差のCPU/GPU相対比較に未達がありました。[初版の実測結果](docs/RESULTS_JA.md)を参照してください。
 
 今回の入力は、ポート9876で開いていた `kami-hair-solver` と同じ **「カーブ」6,757本・74,327点**、**「CC_Base_Body」225,184頂点・449,472三角形** です。元の `.blend` は上書きしていません。新しいシーンは `outputs/kami4_current_scene.blend`、拡張ZIPは `dist/kami4_hair_solver-0.1.0-windows-x64.zip` です。
 
-## 使用
+### 初版の使用
 
 新しいシーンを開くと、`Kami4_髪_計算結果` と200フレームのキャッシュが接続済みです。3Dビューの「Kami4」で Replay を有効にし、タイムラインを動かしてください。再計算は Initialize → Bake、1フレームだけなら Simulate、開始形状へ戻す場合は Reset を使用します。Bake はEscで中止できます。
 
@@ -16,7 +29,7 @@ Blender 5.2 / Windows x64 / CUDA の固定予算ヘアーソルバーです。C+
 
 材質と固定回数は [extension/parameters.json](extension/parameters.json) の一つにあります。値を変更する際は新しいキャッシュフォルダーを指定して初期化します。入力する髪と身体メッシュは編集せず、計算結果を別のCurvesへ書き戻します。処理とキャッシュの詳細は [アーキテクチャ](docs/ARCHITECTURE.md) に記載しています。
 
-## ビルドと再現
+### 初版のビルドと再現
 
 今回の環境: Blender 5.2.2 LTS、RTX 5070 Ti、driver 616.92、CUDA Toolkit 12.9.41、MSVC 19.44。C ABIヘッダーはC11/C++の両方で使用できます。
 
